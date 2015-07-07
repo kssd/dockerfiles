@@ -1,5 +1,5 @@
-FROM timhaak/base:latest
-MAINTAINER tim@haak.co.uk
+FROM kunwarsangram/base:latest
+MAINTAINER Kunwar Sangram Singh <kunwar.sangram@gmail.com>
 
 RUN echo "deb http://shell.ninthgate.se/packages/debian wheezy main" > /etc/apt/sources.list.d/plexmediaserver.list && \
     curl http://shell.ninthgate.se/packages/shell-ninthgate-se-keyring.key | apt-key add - && \
