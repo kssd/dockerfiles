@@ -1,0 +1,52 @@
+# Python application image (Chainguard Python + uv, multi-stage).
+#
+# Chainguard variant of Dockerfile.uv. Builder is the Chainguard
+# python:*-dev image with `uv` bootstrapped via pip; runtime is the
+# minimal Chainguard python image. Two-phase `uv sync` separates
+# dependency install from project install for layer caching.
+#
+# Free vs. paid Chainguard tags:
+#   See the header note in Dockerfile.python.chainguard. The free
+#   Developer Edition only publishes :latest / :latest-dev; pin by digest
+#   for production reproducibility, or use a paid subscription for
+#   versioned tags like :3.12-dev.
+#
+# Expected build context:
+#   ./pyproject.toml   - project metadata and dependencies
+#   ./uv.lock          - locked dependency graph (uv lock)
+#   ./main.py          - default entry point (override ENTRYPOINT if different)
+#   ./.dockerignore    - must exclude .venv/ to avoid clobbering the builder venv
+#
+# Build (free tier, floating tag — pin by digest for production):
+#   docker build -t myapp -f Dockerfile.uv.chainguard .
+#
+# Build (paid tier, versioned tag):
+#   docker build --build-arg BASE_TAG=3.12 -t myapp -f Dockerfile.uv.chainguard .
+ARG BASE_TAG=latest
+ARG UV_VERSION=0.5.11
+FROM cgr.dev/chainguard/python:${BASE_TAG}-dev AS builder
+ARG UV_VERSION
+WORKDIR /app
+ENV VIRTUAL_ENV=/app/.venv \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+RUN command -v uv >/dev/null 2>&1 || python -m pip install --no-cache-dir "uv==${UV_VERSION}"
+COPY pyproject.toml uv.lock ./
+RUN uv venv --relocatable "$VIRTUAL_ENV" && \
+    uv sync --frozen --no-dev --no-cache --no-install-project
+COPY . .
+RUN uv sync --frozen --no-dev --no-cache
+
+FROM cgr.dev/chainguard/python:${BASE_TAG}
+WORKDIR /app
+ENV VIRTUAL_ENV=/app/.venv \
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY --from=builder --chown=nonroot:nonroot /app /app
+USER nonroot
+
+ENTRYPOINT ["python", "main.py"]

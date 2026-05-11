@@ -1,23 +1,27 @@
 # Secure Python Docker Image Templates
 
-Reference Dockerfiles for building **secure Python Docker images** in production — including **distroless Python**, Poetry / uv builds, **AWS Lambda Python container images**, and an **agent sandbox container** for running LLM-generated code. Six variants are provided; pick the one that matches your dependency tooling and runtime target.
+Reference Dockerfiles for building **secure Python Docker images** in production — including **distroless Python**, Poetry / uv builds, **AWS Lambda Python container images**, and an **agent sandbox container** for running LLM-generated code. Eight variants are provided: pick the one that matches your dependency tooling and runtime target.
 
-| File                    | Dependency manager                                                                                    | Use when                                                                                                                                          |
-| ----------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Dockerfile.python`     | `pip` + `requirements.txt`                                                                            | The project pins deps in `requirements.txt` and does not use `pyproject.toml` / `uv.lock`.                                                        |
-| `Dockerfile.uv`         | [`uv`](https://docs.astral.sh/uv/) + `pyproject.toml` + `uv.lock`                                     | The project uses `uv` for resolution and locking (recommended for new projects — faster, deterministic, PEP 621).                                 |
-| `Dockerfile.poetry`     | [Poetry](https://python-poetry.org/) + `pyproject.toml` + `poetry.lock`                               | The project uses Poetry. Poetry exports a `requirements.txt` in the builder; the runtime image does not contain Poetry itself.                    |
-| `Dockerfile.distroless` | `pip` + `requirements.txt` on [Google Distroless](https://github.com/GoogleContainerTools/distroless) | You want a distroless runtime but cannot use Chainguard (registry/account constraints). Larger than the Chainguard variants.                      |
-| `Dockerfile.lambda`     | `pip` + `requirements.txt` on AWS Lambda base                                                         | Deploying to AWS Lambda as a container image. Uses `public.ecr.aws/lambda/python` with the Lambda Runtime Interface Client preinstalled.          |
-| `Dockerfile.sandbox`    | `python:*-slim` + curated, pinned tools (`git`, `curl`, `jq`, `ipython`, `pytest`, `ruff`, …)         | Running LLM-agent-generated code. Non-root, tini-supervised, tool-rich on purpose. Pair with `--read-only`, `--network none`, tmpfs `/workspace`. |
+**Default runtime is Google Distroless (`gcr.io/distroless/python3-debian12:nonroot`).** Chainguard variants are provided as siblings (`Dockerfile.*.chainguard`) for users who prefer Chainguard's daily-rebuilt, signed/attested images. Chainguard's free Developer Edition only publishes `:latest` / `:latest-dev`; versioned tags like `:3.12-dev` require a paid subscription. The Chainguard variants in this repo default to `:latest-dev` and document digest-pinning so free-tier users can still get reproducible builds.
 
-The first five variants produce a minimal, non-root, multi-stage image suitable for production application workloads. `Dockerfile.sandbox` is intentionally the opposite: a tool-rich, pinned, non-root environment for running untrusted agent-generated code (see [Agentic usage](#agentic-usage)). All variants default `BASE_TAG` to a real minor (`3.12` for the application variants, `3.12-slim` for the sandbox and distroless builder) so out-of-the-box builds are reproducible — override at build time to pick a different Python minor.
+| File                           | Dependency manager                                                          | Runtime base                          | Use when                                                                                                                                          |
+| ------------------------------ | --------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Dockerfile.python`            | `pip` + `requirements.txt`                                                  | Google Distroless                     | The project pins deps in `requirements.txt` and does not use `pyproject.toml` / `uv.lock`.                                                        |
+| `Dockerfile.uv`                | [`uv`](https://docs.astral.sh/uv/) + `pyproject.toml` + `uv.lock`           | Google Distroless                     | The project uses `uv` for resolution and locking (recommended for new projects — faster, deterministic, PEP 621).                                 |
+| `Dockerfile.poetry`            | [Poetry](https://python-poetry.org/) + `pyproject.toml` + `poetry.lock`     | Google Distroless                     | The project uses Poetry. Poetry exports a hash-pinned `requirements.txt` in the builder; the runtime image does not contain Poetry itself.        |
+| `Dockerfile.python.chainguard` | `pip` + `requirements.txt`                                                  | Chainguard Python                     | You prefer Chainguard's signed/attested base over Distroless. Free-tier-compatible (`:latest-dev` default; pin by digest for reproducibility).    |
+| `Dockerfile.uv.chainguard`     | `uv` + `pyproject.toml` + `uv.lock`                                         | Chainguard Python                     | uv workflow on Chainguard. Same paywall/digest-pin notes as above.                                                                                |
+| `Dockerfile.poetry.chainguard` | Poetry + `pyproject.toml` + `poetry.lock`                                   | Chainguard Python                     | Poetry workflow on Chainguard. Same paywall/digest-pin notes as above.                                                                            |
+| `Dockerfile.lambda`            | `pip` + `requirements.txt`                                                  | `public.ecr.aws/lambda/python`        | Deploying to AWS Lambda as a container image. Uses the Lambda Runtime Interface Client preinstalled in the base.                                  |
+| `Dockerfile.sandbox`           | `python:*-slim` + curated, pinned tools (`git`, `curl`, `jq`, `ipython`, …) | `python:*-slim` (intentionally large) | Running LLM-agent-generated code. Non-root, tini-supervised, tool-rich on purpose. Pair with `--read-only`, `--network none`, tmpfs `/workspace`. |
+
+The seven application variants produce a minimal, non-root, multi-stage image suitable for production workloads. `Dockerfile.sandbox` is intentionally the opposite: a tool-rich, pinned, non-root environment for running untrusted agent-generated code (see [Agentic usage](#agentic-usage)). The default Distroless variants pin `BASE_TAG=3.12-slim` for reproducible out-of-the-box builds; the Chainguard variants default to `BASE_TAG=latest` for free-tier compatibility and rely on digest-pinning for reproducibility (see the header of each `*.chainguard` file).
 
 ## Why these images are efficient
 
 ### Multi-stage build separates build-time from runtime
 
-The **builder stage** uses `cgr.dev/chainguard/python:*-dev`, which ships with a shell, `pip`, and the toolchain needed to compile native wheels. The `Dockerfile.uv` variant bootstraps `uv` in the builder if the base image does not already provide it. The **runtime stage** uses the minimal `cgr.dev/chainguard/python:*` image — no shell, no package manager, no build tools. Only the resolved virtualenv and application source are copied across, so build dependencies never ship to production.
+The **builder stage** uses `python:*-slim` (default variants) or `cgr.dev/chainguard/python:*-dev` (Chainguard variants) — both ship with a shell, `pip`, and the toolchain needed to compile native wheels. The `uv` variants bootstrap `uv` via pip; the Poetry variants install Poetry into an isolated `/opt/poetry` tree. The **runtime stage** uses the minimal distroless or Chainguard image — no shell, no package manager, no build tools. Only the resolved dependencies and application source are copied across, so build dependencies never ship to production.
 
 Result: smaller final image, fewer installed packages, and a much smaller attack surface.
 
@@ -27,27 +31,23 @@ Dependencies are installed **before** the application source is copied:
 
 ```dockerfile
 COPY pyproject.toml uv.lock ./        # or: COPY requirements.txt ./
-RUN uv sync --frozen --no-install-project   # or: pip install -r requirements.txt
-COPY . .
-RUN uv sync --frozen                  # installs the project itself
+RUN uv export --frozen ...            # or: pip install -r requirements.txt
+COPY . /app/src
 ```
 
-Changing application code does not invalidate the (typically expensive) dependency-install layer. Re-builds for code-only changes complete in seconds. The `uv` variant goes further with a two-phase `uv sync` so the project install is its own thin layer on top of the dependency layer.
+Changing application code does not invalidate the (typically expensive) dependency-install layer. Re-builds for code-only changes complete in seconds.
 
-### Relocatable virtualenv enables clean cross-stage copy
+### `pip install --target` for distroless-compatible installs
 
-The builder creates a relocatable venv at `/app/.venv` and the runtime stage reuses the exact same path with a matching `PATH`. This means:
-
-- No reinstall in the runtime stage — the resolved venv is copied byte-for-byte.
-- No `pip` / `uv` invocation at runtime, so neither tool needs to exist in the final image.
+Default (distroless) variants install dependencies with `pip install --target=/app/deps` rather than into a virtualenv. A venv embeds absolute-path shebangs pointing at the builder's Python; copied into distroless those shebangs would be invalid. `--target` produces a plain site-packages tree that the runtime exposes via `PYTHONPATH=/app/deps:/app/src`. Chainguard variants can use a venv because both the `-dev` builder and the runtime ship with the same Python at the same path.
 
 ### `uv` for speed and determinism
 
-The `Dockerfile.uv` variant uses `uv sync --frozen --no-cache`:
+The `uv` variants use `uv export --frozen --no-dev` (distroless) or `uv sync --frozen --no-cache` (Chainguard):
 
 - `uv` resolves and installs an order of magnitude faster than `pip`.
 - `--frozen` requires `uv.lock` to be consistent with `pyproject.toml` — builds fail loudly on drift instead of silently resolving a different graph.
-- `--no-cache` keeps the builder layer small (we don't need uv's cache after the venv is built).
+- The distroless variant pipes the locked graph through `pip install --no-deps --require-hashes --target` for supply-chain integrity.
 - `UV_LINK_MODE=copy` produces a self-contained venv with no hardlinks into uv's cache — required for cross-stage copy.
 
 ### `.dockerignore` keeps the build context small
@@ -63,14 +63,21 @@ The runtime stage sets:
 
 ## Why these images are secure
 
-### Distroless base from Chainguard
+### Distroless runtime (default)
 
-Both stages use [Chainguard Images](https://www.chainguard.dev/chainguard-images):
+The default variants use [Google Distroless](https://github.com/GoogleContainerTools/distroless) (`gcr.io/distroless/python3-debian12:nonroot`):
 
-- **Minimal runtime** — the non-`-dev` image has no shell (`/bin/sh`), no package manager, no `curl`, no `wget`, no compilers. A compromised process cannot drop into a shell, install tools, or fetch payloads using image-provided binaries.
-- **Continuously rebuilt** — Chainguard ships updated base images on a daily cadence with CVEs patched at source. Pinning a minor (`3.12`) keeps you on the latest patch automatically when you rebuild.
-- **Signed and attested** — images are signed with Sigstore and ship with SLSA provenance and SBOMs, enabling verification in admission controllers (e.g. Kyverno, Connaisseur).
-- **Trusted registry** — `cgr.dev` is allow-listed in this repo's `.hadolint.yaml`.
+- **Minimal runtime** — no shell (`/bin/sh`), no package manager, no `curl`, no `wget`, no compilers. A compromised process cannot drop into a shell, install tools, or fetch payloads using image-provided binaries.
+- **Versioned, freely pinnable tags** — `debian12` and minor-aligned variants are publicly available; no paywall.
+- **GCR-hosted, broadly trusted** — `gcr.io` is allow-listed in this repo's `.hadolint.yaml`.
+
+### Chainguard runtime (alternative)
+
+The `*.chainguard` variants use [Chainguard Images](https://www.chainguard.dev/chainguard-images):
+
+- **Daily-rebuilt** with CVEs patched at source.
+- **Signed and attested** — Sigstore-signed, with SLSA provenance and SBOMs for admission-controller verification (Kyverno, Connaisseur).
+- **Free tier caveat** — Chainguard's free Developer Edition only publishes `:latest` / `:latest-dev`. Versioned tags like `:3.12-dev` need a paid subscription. The Chainguard templates here default to `:latest-dev` and document digest-pinning so free-tier users still get reproducible builds.
 
 ### Non-root user
 
@@ -91,7 +98,7 @@ Both approaches make builds reproducible and auditable.
 
 The repo CI runs `hadolint` at the `warning` threshold (`.github/workflows/lint.yml`). These templates follow the rules that matter most for security:
 
-- **DL3007** — pin tags. All templates default `BASE_TAG=3.12`; do not override to `latest`.
+- **DL3007** — pin tags. Distroless variants default `BASE_TAG=3.12-slim`; Chainguard variants default `BASE_TAG=latest` (free-tier constraint) and must be digest-pinned in production.
 - **DL3008 / DL3013** — pin apt/pip versions (no apt or unpinned pip in these images).
 - **DL3009** — clean apt lists (no apt at all here).
 - **DL3025** — use JSON-array `ENTRYPOINT` form (so signals reach the process correctly and there is no shell wrapping it).
@@ -103,11 +110,19 @@ The repo CI runs `hadolint` at the `warning` threshold (`.github/workflows/lint.
 ## Build and run
 
 ```bash
-# pip variant
-docker build --build-arg BASE_TAG=3.12 -t myapp -f Dockerfile.python .
+# Default (distroless) — pip variant
+docker build --build-arg BASE_TAG=3.12-slim -t myapp -f Dockerfile.python .
 
-# uv variant
-docker build --build-arg BASE_TAG=3.12 -t myapp -f Dockerfile.uv .
+# Default (distroless) — uv variant
+docker build --build-arg BASE_TAG=3.12-slim -t myapp -f Dockerfile.uv .
+
+# Default (distroless) — Poetry variant
+docker build --build-arg BASE_TAG=3.12-slim -t myapp -f Dockerfile.poetry .
+
+# Chainguard variants (free tier — pin by digest in production):
+docker build -t myapp -f Dockerfile.python.chainguard .
+docker build -t myapp -f Dockerfile.uv.chainguard .
+docker build -t myapp -f Dockerfile.poetry.chainguard .
 
 # run (read-only rootfs, drop all capabilities — recommended defaults)
 docker run --rm \
@@ -121,12 +136,13 @@ docker run --rm \
 
 ```text
 .
-├── Dockerfile.python OR Dockerfile.uv
+├── Dockerfile.<variant>      # one of: python, uv, poetry, *.chainguard, lambda, sandbox
 ├── .dockerignore             # provided in this directory
-├── main.py                   # default entry point (override ENTRYPOINT to change)
-├── requirements.txt          # for Dockerfile.python
-└── pyproject.toml            # for Dockerfile.uv
-    uv.lock
+├── main.py                   # default entry point (override CMD/ENTRYPOINT to change)
+├── requirements.txt          # for the pip variants
+└── pyproject.toml            # for uv / Poetry variants
+    uv.lock                   # uv lockfile
+    poetry.lock               # Poetry lockfile
 ```
 
 Override the entry point at run time without rebuilding:

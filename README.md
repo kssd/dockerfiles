@@ -6,12 +6,22 @@ Reference Dockerfiles and best-practice guides for building **secure container i
 
 ### Python Dockerfile templates
 
-Secure Python Docker images, distroless Python, Poetry / uv builds, AWS Lambda Python container images, and an agent sandbox container for LLM-generated code.
+Secure Python Docker images on **Google Distroless** by default, with Chainguard variants for users who want signed/attested daily-rebuilt images. Plus AWS Lambda Python container images and an agent sandbox for LLM-generated code.
 
-- pip + Chainguard → [dockerfiles/python/Dockerfile.python](dockerfiles/python/Dockerfile.python)
-- uv + Chainguard → [dockerfiles/python/Dockerfile.uv](dockerfiles/python/Dockerfile.uv)
+**Distroless (default — freely pinnable to versioned tags):**
+
+- pip → [dockerfiles/python/Dockerfile.python](dockerfiles/python/Dockerfile.python)
+- uv → [dockerfiles/python/Dockerfile.uv](dockerfiles/python/Dockerfile.uv)
 - Poetry → [dockerfiles/python/Dockerfile.poetry](dockerfiles/python/Dockerfile.poetry)
-- Google Distroless → [dockerfiles/python/Dockerfile.distroless](dockerfiles/python/Dockerfile.distroless)
+
+**Chainguard (signed/attested; free-tier compatible via digest-pinning):**
+
+- pip + Chainguard → [dockerfiles/python/Dockerfile.python.chainguard](dockerfiles/python/Dockerfile.python.chainguard)
+- uv + Chainguard → [dockerfiles/python/Dockerfile.uv.chainguard](dockerfiles/python/Dockerfile.uv.chainguard)
+- Poetry + Chainguard → [dockerfiles/python/Dockerfile.poetry.chainguard](dockerfiles/python/Dockerfile.poetry.chainguard)
+
+**Specialized runtimes:**
+
 - AWS Lambda container image → [dockerfiles/python/Dockerfile.lambda](dockerfiles/python/Dockerfile.lambda)
 - Agent sandbox container → [dockerfiles/python/Dockerfile.sandbox](dockerfiles/python/Dockerfile.sandbox)
 

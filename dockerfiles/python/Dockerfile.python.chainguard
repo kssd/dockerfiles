@@ -1,0 +1,53 @@
+# Python application image (pip + Chainguard, multi-stage).
+#
+# Chainguard variant of Dockerfile.python. Use this when you want the
+# minimal Chainguard runtime (no shell, no package manager, daily CVE
+# patches, signed/attested) instead of Google Distroless.
+#
+# Free vs. paid Chainguard tags:
+#   The free Developer Edition on cgr.dev only publishes :latest and
+#   :latest-dev. Versioned tags like :3.12-dev require a paid Chainguard
+#   subscription. For free-tier reproducibility, pin BY DIGEST instead of
+#   relying on the floating :latest tag:
+#
+#     docker pull cgr.dev/chainguard/python:latest
+#     docker inspect --format='{{index .RepoDigests 0}}' cgr.dev/chainguard/python:latest
+#     # then bake the digest into BASE_DIGEST or replace the FROM lines.
+#
+#   Refresh the digest deliberately (e.g. weekly) and re-scan.
+#
+# Expected build context:
+#   ./requirements.txt - pinned dependencies (pip install -r)
+#   ./main.py          - default entry point (override ENTRYPOINT if different)
+#   ./.dockerignore    - must exclude .venv/ to avoid clobbering the builder venv
+#
+# Build (free tier, floating tag — pin by digest for production):
+#   docker build -t myapp -f Dockerfile.python.chainguard .
+#
+# Build (paid tier, versioned tag):
+#   docker build --build-arg BASE_TAG=3.12 -t myapp -f Dockerfile.python.chainguard .
+#
+# Override entry point at runtime:
+#   docker run --entrypoint python myapp -m mypkg
+ARG BASE_TAG=latest
+FROM cgr.dev/chainguard/python:${BASE_TAG}-dev AS builder
+WORKDIR /app
+ENV VIRTUAL_ENV=/app/.venv
+
+RUN python -m venv "$VIRTUAL_ENV"
+ENV PATH="/app/.venv/bin:$PATH"
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+
+FROM cgr.dev/chainguard/python:${BASE_TAG}
+WORKDIR /app
+ENV VIRTUAL_ENV=/app/.venv \
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY --from=builder --chown=nonroot:nonroot /app /app
+USER nonroot
+
+ENTRYPOINT ["python", "main.py"]

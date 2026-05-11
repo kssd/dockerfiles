@@ -1,45 +1,65 @@
-# Python application image (Chainguard Python + uv, multi-stage).
+# Python application image (uv + Google Distroless, multi-stage).
 #
-# Builder uses cgr.dev/chainguard/python:*-dev and bootstraps `uv` if the image
-# does not already provide it; runtime is the minimal Chainguard python image.
-# Two-phase `uv sync` separates dependency install from project install for
-# better layer caching.
+# Builder is `python:*-slim` with `uv` bootstrapped via pip; runtime is
+# `gcr.io/distroless/python3-debian12:nonroot`. Distroless has no shell
+# and no package manager, so dependencies are installed with
+# `uv pip install --target=/app/deps` (NOT a venv) — the same reason as
+# Dockerfile.python: venv shebangs are absolute paths to the builder's
+# Python and would break under distroless.
+#
+# Lock-file workflow:
+#   `uv export --frozen --no-dev` produces a fully resolved, hash-pinned
+#   requirements file from `uv.lock`. The build fails loudly if `uv.lock`
+#   is out of sync with `pyproject.toml`.
+#
+# See Dockerfile.python's header for the "why distroless is the default
+# instead of Chainguard" explanation. The Chainguard variant lives in
+# Dockerfile.uv.chainguard.
+#
+# IMPORTANT: builder and runtime Python minor versions MUST match. Pin
+# the distroless image by digest in production and align `BASE_TAG` to
+# the same Python minor.
 #
 # Expected build context:
 #   ./pyproject.toml   - project metadata and dependencies
 #   ./uv.lock          - locked dependency graph (uv lock)
-#   ./main.py          - default entry point (override ENTRYPOINT if different)
-#   ./.dockerignore    - must exclude .venv/ to avoid clobbering the builder venv
+#   ./main.py          - default entry point (override CMD if different)
 #
 # Build:
-#   docker build --build-arg BASE_TAG=3.12 -t myapp -f Dockerfile.uv .
-#
-# Override entry point at runtime:
-#   docker run --entrypoint python myapp -m mypkg
-ARG BASE_TAG=latest
-FROM cgr.dev/chainguard/python:${BASE_TAG}-dev AS builder
-WORKDIR /app
-ENV VIRTUAL_ENV=/app/.venv \
-    UV_PROJECT_ENVIRONMENT=/app/.venv \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
-
+#   docker build --build-arg BASE_TAG=3.12-slim -t myapp -f Dockerfile.uv .
+ARG BASE_TAG=3.12-slim
+ARG DISTROLESS_TAG=debian12
 ARG UV_VERSION=0.5.11
-RUN command -v uv >/dev/null 2>&1 || python -m pip install --no-cache-dir "uv==${UV_VERSION}"
-COPY pyproject.toml uv.lock ./
-RUN uv venv --relocatable "$VIRTUAL_ENV" && \
-    uv sync --frozen --no-dev --no-cache --no-install-project
-COPY . .
-RUN uv sync --frozen --no-dev --no-cache
 
-FROM cgr.dev/chainguard/python:${BASE_TAG}
+FROM python:${BASE_TAG} AS builder
+ARG UV_VERSION
 WORKDIR /app
-ENV VIRTUAL_ENV=/app/.venv \
-    PATH="/app/.venv/bin:$PATH" \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    UV_LINK_MODE=copy \
+    UV_NO_CACHE=1
 
-COPY --from=builder --chown=nonroot:nonroot /app /app
+RUN pip install --no-cache-dir "uv==${UV_VERSION}"
+
+COPY pyproject.toml uv.lock ./
+# Export the locked graph to a hash-pinned requirements file, then install
+# with --target (no venv, no shebang rewrites). --no-deps is required by
+# --require-hashes; the export already pins the full transitive graph.
+RUN uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt && \
+    pip install --no-cache-dir --no-deps --require-hashes \
+        --target=/app/deps -r /tmp/requirements.txt
+
+COPY . /app/src
+
+FROM gcr.io/distroless/python3-${DISTROLESS_TAG}:nonroot
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/deps:/app/src
+
+COPY --from=builder --chown=nonroot:nonroot /app/deps /app/deps
+COPY --from=builder --chown=nonroot:nonroot /app/src /app/src
+
 USER nonroot
 
-ENTRYPOINT ["python", "main.py"]
+CMD ["/app/src/main.py"]

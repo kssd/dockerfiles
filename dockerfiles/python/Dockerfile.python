@@ -1,34 +1,71 @@
-# Python application image (Chainguard, multi-stage).
+# Python application image (pip + Google Distroless, multi-stage).
+#
+# Default Python variant. Builder is the official python:*-slim (Debian)
+# image — needed because distroless has no shell, no pip, and no package
+# manager. The runtime is gcr.io/distroless/python3-debian12:nonroot, which
+# contains only Python + its runtime deps + a non-root user.
+#
+# Why distroless is the default (and not Chainguard):
+#   Chainguard's versioned tags (e.g. `:3.12-dev`) require a paid
+#   subscription on `cgr.dev`. The free Developer Edition only publishes
+#   `:latest` / `:latest-dev`, which conflicts with this repo's "never
+#   floating tags" rule. `gcr.io/distroless/*` is freely available with
+#   pinnable versioned tags. See `Dockerfile.python.chainguard` for the
+#   Chainguard variant.
+#
+# IMPORTANT: builder and runtime Python minor versions MUST match. The
+# builder is `python:${BASE_TAG}` (e.g. 3.12-slim) and the runtime is
+# whatever Python minor `gcr.io/distroless/python3-debian12` currently
+# ships. Pin the distroless image by digest in production to lock this
+# down, and align `BASE_TAG` with the digest's Python minor.
+#
+# Dependencies are installed with `pip install --target` instead of a venv:
+# this produces a version-agnostic site-packages tree, avoids the venv's
+# absolute-path shebangs (which would point at the builder's Python and
+# fail in distroless), and lets us expose them with a single PYTHONPATH.
 #
 # Expected build context:
-#   ./requirements.txt - pinned dependencies (pip install -r)
-#   ./main.py          - default entry point (override ENTRYPOINT if different)
-#   ./.dockerignore    - must exclude .venv/ to avoid clobbering the builder venv
+#   ./requirements.txt - pinned dependencies
+#   ./main.py          - default entry point (override CMD if different)
 #
-# Build:
-#   docker build --build-arg BASE_TAG=3.12 -t myapp -f Dockerfile.python .
+# Build (pure-Python deps only - smallest, fastest):
+#   docker build --build-arg BASE_TAG=3.12-slim -t myapp -f Dockerfile.python .
 #
-# Override entry point at runtime:
-#   docker run --entrypoint python myapp -m mypkg
-ARG BASE_TAG=3.12
-FROM cgr.dev/chainguard/python:${BASE_TAG}-dev AS builder
-WORKDIR /app
-ENV VIRTUAL_ENV=/app/.venv
+# Build (deps need to compile native code - e.g. cryptography from sdist):
+#   docker build --build-arg BASE_TAG=3.12-slim --build-arg NEED_BUILD_TOOLS=1 \
+#       -t myapp -f Dockerfile.python .
+ARG BASE_TAG=3.12-slim
+ARG DISTROLESS_TAG=debian12
 
-RUN python -m venv "$VIRTUAL_ENV"
-ENV PATH="/app/.venv/bin:$PATH"
+FROM python:${BASE_TAG} AS builder
+ARG NEED_BUILD_TOOLS=0
+WORKDIR /app
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Optional: install build toolchain only when the project actually needs to
+# compile native wheels. Most modern PyPI packages ship manylinux wheels.
+# hadolint ignore=DL3008
+RUN if [ "$NEED_BUILD_TOOLS" = "1" ]; then \
+        apt-get update && \
+        apt-get install --no-install-recommends -y build-essential && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
+
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
+RUN pip install --no-cache-dir --target=/app/deps -r requirements.txt
 
-FROM cgr.dev/chainguard/python:${BASE_TAG}
+COPY . /app/src
+
+FROM gcr.io/distroless/python3-${DISTROLESS_TAG}:nonroot
 WORKDIR /app
-ENV VIRTUAL_ENV=/app/.venv \
-    PATH="/app/.venv/bin:$PATH" \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/deps:/app/src
 
-COPY --from=builder --chown=nonroot:nonroot /app /app
+COPY --from=builder --chown=nonroot:nonroot /app/deps /app/deps
+COPY --from=builder --chown=nonroot:nonroot /app/src /app/src
+
 USER nonroot
 
-ENTRYPOINT ["python", "main.py"]
+CMD ["/app/src/main.py"]
