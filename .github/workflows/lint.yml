@@ -26,5 +26,6 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           recursive: true
+          dockerfile: "**/Dockerfile*"
           config: .hadolint.yaml
           failure-threshold: warning
