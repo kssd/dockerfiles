@@ -1,0 +1,45 @@
+# Python application image for AWS Lambda (container image deployment).
+#
+# Targets the AWS-provided Lambda Python base image, which ships with the
+# Lambda Runtime Interface Client (RIC) and Runtime Interface Emulator (RIE)
+# preinstalled, so the image works in Lambda and is locally invocable via
+# `docker run -p 9000:8080 myapp` + `curl .../2015-03-31/functions/function/invocations`.
+#
+# The two-stage split isolates pip and its install-time state from the final
+# image's layer cache - dependencies land cleanly in ${LAMBDA_TASK_ROOT} via
+# `pip install --target` without dragging along pip's wheel/HTTP cache.
+#
+# Expected build context:
+#   ./requirements.txt - pinned dependencies
+#   ./app.py           - module containing the handler (CMD default: app.handler)
+#
+# Build (match your Lambda function's architecture - Apple Silicon defaults
+# to arm64, but most Lambda functions are x86_64):
+#   docker build --platform=linux/amd64 --build-arg BASE_TAG=3.12 \
+#       -t myapp-lambda -f Dockerfile.lambda .
+#
+# Change the handler:
+#   Edit the CMD line below (e.g. CMD ["mypkg.module.handler"]), or override
+#   at deploy time:
+#     aws lambda update-function-configuration --function-name fn \
+#       --image-config '{"Command":["mypkg.module.handler"]}'
+#
+# Footgun: top-level directories in the build context that share a name with
+# an installed package (e.g. a local `requests/` folder) will shadow the
+# installed wheel because `COPY . ${LAMBDA_TASK_ROOT}` runs after the deps
+# copy. Keep application code under a project-specific package name.
+ARG BASE_TAG=3.12
+FROM public.ecr.aws/lambda/python:${BASE_TAG} AS builder
+ENV LAMBDA_TASK_ROOT=/var/task
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip==24.2 && \
+    pip install --no-cache-dir -r /tmp/requirements.txt --target "${LAMBDA_TASK_ROOT}"
+
+FROM public.ecr.aws/lambda/python:${BASE_TAG}
+ENV LAMBDA_TASK_ROOT=/var/task
+
+COPY --from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}
+COPY . ${LAMBDA_TASK_ROOT}
+
+CMD ["app.handler"]

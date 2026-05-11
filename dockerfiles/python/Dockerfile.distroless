@@ -1,0 +1,69 @@
+# Python application image on Google Distroless (multi-stage).
+#
+# Builder is the official python:*-slim (Debian) image - needed because
+# distroless has no shell, no pip, and no package manager. The runtime is
+# gcr.io/distroless/python3-debian12:nonroot, which contains only Python +
+# its runtime deps + a non-root user, and nothing else.
+#
+# Trade-offs vs. the Chainguard variants:
+#   + Widely deployed, GCR-hosted, no account/registry login needed.
+#   - No shell in the runtime - cannot `docker exec sh` for debugging.
+#     Use the `:debug` tag of distroless for ad-hoc shells.
+#   - Larger than Chainguard for equivalent functionality.
+#
+# IMPORTANT: builder and runtime Python minor versions MUST match. The builder
+# is `python:${BASE_TAG}` (e.g. 3.12-slim) and the runtime is whatever Python
+# minor `gcr.io/distroless/python3-debian12` currently ships. Pin the
+# distroless image by digest in production to lock this down, and align
+# `BASE_TAG` with the digest's Python minor.
+#
+# Dependencies are installed with `pip install --target` instead of a venv:
+# this produces a version-agnostic site-packages tree, avoids the venv's
+# absolute-path shebangs (which would point at the builder's Python and fail
+# in distroless), and lets us expose them with a single PYTHONPATH.
+#
+# Expected build context:
+#   ./requirements.txt - pinned dependencies
+#   ./main.py          - default entry point (override CMD if different)
+#
+# Build (pure-Python deps only - smallest, fastest):
+#   docker build --build-arg BASE_TAG=3.12-slim -t myapp -f Dockerfile.distroless .
+#
+# Build (deps need to compile native code - e.g. cryptography from sdist):
+#   docker build --build-arg BASE_TAG=3.12-slim --build-arg NEED_BUILD_TOOLS=1 \
+#       -t myapp -f Dockerfile.distroless .
+ARG BASE_TAG=3.12-slim
+ARG DISTROLESS_TAG=debian12
+
+FROM python:${BASE_TAG} AS builder
+ARG NEED_BUILD_TOOLS=0
+WORKDIR /app
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Optional: install build toolchain only when the project actually needs to
+# compile native wheels. Most modern PyPI packages ship manylinux wheels.
+# hadolint ignore=DL3008
+RUN if [ "$NEED_BUILD_TOOLS" = "1" ]; then \
+        apt-get update && \
+        apt-get install --no-install-recommends -y build-essential && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --target=/app/deps -r requirements.txt
+
+COPY . /app/src
+
+FROM gcr.io/distroless/python3-${DISTROLESS_TAG}:nonroot
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/deps:/app/src
+
+COPY --from=builder --chown=nonroot:nonroot /app/deps /app/deps
+COPY --from=builder --chown=nonroot:nonroot /app/src /app/src
+
+USER nonroot
+
+CMD ["/app/src/main.py"]

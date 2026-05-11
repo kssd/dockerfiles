@@ -1,0 +1,114 @@
+# Python execution sandbox for agent-generated code.
+#
+# Unlike the other Python templates in this directory (which are minimal
+# *controllers* — no shell, no tools), this image is the "fat toolbox" half of
+# the agentic pattern from the top-level README: a non-root, pinned, but
+# tool-rich environment where an LLM agent can run code it just wrote.
+#
+# Design rules:
+#   - Python tools are explicitly listed and version-pinned (the `pip`
+#     install layer). Debian apt packages are NOT individually pinned —
+#     instead, reproducibility comes from digest-pinning the base image
+#     (see below); whatever apt versions ship with that exact digest are
+#     the versions you get.
+#   - Runs as a non-root user (`agent`, UID 10001).
+#   - Workdir is /workspace. The expected invocation mounts a tmpfs there
+#     (`--tmpfs /workspace:...,uid=10001`) and runs the rest of the rootfs
+#     read-only (`--read-only`).
+#   - No network by default at run time (`--network none`). Add a tightly
+#     scoped network only when the task genuinely needs egress.
+#   - Default CMD is an interactive Python REPL; agents typically override
+#     with `docker exec` or by passing a script path.
+#
+# Base-image immutability:
+#   `python:3.12-slim` is a floating tag. For production sandbox use,
+#   resolve it to a digest and pin in the FROM line:
+#     docker pull python:3.12-slim
+#     docker inspect --format='{{index .RepoDigests 0}}' python:3.12-slim
+#     # then: FROM python@sha256:<digest>
+#   Refresh the digest deliberately (e.g. weekly) and re-scan.
+#
+# Recommended invocation (host side):
+#   docker run --rm -it \
+#     --read-only \
+#     --tmpfs /workspace:rw,exec,size=256m,uid=10001,gid=10001 \
+#     --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+#     --network none \
+#     --cap-drop=ALL \
+#     --security-opt=no-new-privileges \
+#     --memory=512m --cpus=1 \
+#     --pids-limit=256 \
+#     python-sandbox
+#
+# Feeding input in:
+#   Use `docker cp` after the container starts, or add a read-only bind
+#   mount at a subpath that does not collide with the tmpfs root, e.g.
+#     --mount type=bind,src="$PWD/task",dst=/work-input,readonly
+#   and have the agent read from /work-input. Do NOT bind-mount over
+#   /workspace itself — that shadows the writable tmpfs and leaves the
+#   sandbox with no place to write.
+#
+# Build:
+#   docker build --build-arg BASE_TAG=3.12-slim -t python-sandbox \
+#       -f Dockerfile.sandbox .
+#
+# TODO: open questions before this image is considered "finalized":
+#   - Curated tool list still needs validation against real agent traces
+#     (do we need node? go? a JSON-schema CLI? sqlite3?).
+#   - Switch the pip install layer to `--require-hashes` with a checked-in
+#     constraints file once the tool list stabilizes (see Dockerfile.poetry
+#     for the equivalent supply-chain posture).
+#   - Default resource limits (memory/cpu/pids) should be tuned from
+#     observed agent workloads rather than guessed.
+#
+# Adding tools: extend the apt-get and pip install layers below. Bump pip
+# pins deliberately and re-run image scans (grype/trivy) — `python:*-slim`
+# carries more CVE surface than the Chainguard variants used elsewhere in
+# this directory.
+
+ARG BASE_TAG=3.12-slim
+
+FROM python:${BASE_TAG}
+
+# Curated host tools. Versions track the pinned base image digest rather
+# than being pinned individually (Debian point versions roll too often for
+# per-package pins to be practical).
+# hadolint ignore=DL3008
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+        ca-certificates \
+        curl \
+        git \
+        jq \
+        tini && \
+    rm -rf /var/lib/apt/lists/*
+
+# Pinned Python tooling agents commonly reach for. Keep this list small
+# and audited; the agent should not need to `pip install` at run time, so
+# pip itself is intentionally not upgraded here.
+RUN pip install --no-cache-dir \
+        ipython==8.27.0 \
+        requests==2.32.3 \
+        httpx==0.27.2 \
+        pytest==8.3.3 \
+        ruff==0.6.9
+
+# Non-root user. Fixed UID makes tmpfs/bind-mount ownership predictable
+# from the host side (use `uid=10001` on `--tmpfs /workspace`).
+RUN groupadd --system --gid 10001 agent && \
+    useradd  --system --uid 10001 --gid agent --home /home/agent --create-home --shell /bin/bash agent
+
+WORKDIR /workspace
+RUN chown agent:agent /workspace
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HOME=/home/agent
+
+USER agent
+
+# tini reaps zombie subprocesses spawned by the agent's code.
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["python3"]

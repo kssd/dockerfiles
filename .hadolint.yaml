@@ -1,0 +1,10 @@
+failure-threshold: warning
+ignored: []
+trustedRegistries:
+  - docker.io
+  - ghcr.io
+  - gcr.io
+  - quay.io
+  - registry.k8s.io
+  - public.ecr.aws
+  - cgr.dev

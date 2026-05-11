@@ -1,0 +1,14 @@
+.git
+.github
+.vscode
+node_modules
+*.md
+.editorconfig
+.gitignore
+.prettierrc.json
+.prettierignore
+.markdownlint.json
+.markdownlintignore
+.hadolint.yaml
+
+*.local.*

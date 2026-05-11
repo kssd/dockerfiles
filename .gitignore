@@ -1,0 +1,32 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.idea/
+*.swp
+*.swo
+*~
+
+# Node (tooling only)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Build / temp
+dist/
+build/
+tmp/
+.cache/
+
+*.local.*
