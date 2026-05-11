@@ -2,7 +2,29 @@
   "name": "dockerfiles",
   "version": "0.0.1",
   "private": true,
-  "description": "Best practices and templates for building efficient and secure Docker images.",
+  "description": "Secure multi-stage Dockerfile templates for production container images — distroless, non-root, hadolint-clean, with a tool-rich agent sandbox for LLM-generated code. Python first; Node, TypeScript, Go, Rust, JAX planned.",
+  "license": "Apache-2.0",
+  "author": "Kunwar Sangram Singh <sangram@supreplabs.com>",
+  "homepage": "https://github.com/kssd/dockerfiles#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kssd/dockerfiles.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kssd/dockerfiles/issues"
+  },
+  "keywords": [
+    "dockerfile",
+    "dockerfile-templates",
+    "docker",
+    "distroless",
+    "container-security",
+    "multi-stage-build",
+    "non-root-container",
+    "agent-sandbox",
+    "hadolint",
+    "python"
+  ],
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",

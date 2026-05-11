@@ -1,0 +1,16 @@
+# Code ownership for review routing.
+# Syntax: https://docs.github.com/repositories/managing-your-repositorys-settings-and-security/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo.
+*                       @kssd
+
+# Dockerfile templates and language-specific build context.
+/dockerfiles/           @kssd
+
+# CI, lint config, and repo plumbing.
+/.github/               @kssd
+/.hadolint.yaml         @kssd
+/package.json           @kssd
+
+# Security policy needs a security-aware reviewer.
+/SECURITY.md            @kssd

@@ -1,6 +1,6 @@
-# Python Dockerfile templates
+# Secure Python Docker Image Templates
 
-Reference Dockerfiles for building production Python images. Six variants are provided; pick the one that matches your dependency tooling and runtime target.
+Reference Dockerfiles for building **secure Python Docker images** in production — including **distroless Python**, Poetry / uv builds, **AWS Lambda Python container images**, and an **agent sandbox container** for running LLM-generated code. Six variants are provided; pick the one that matches your dependency tooling and runtime target.
 
 | File                    | Dependency manager                                                                                    | Use when                                                                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -17,7 +17,7 @@ The first five variants produce a minimal, non-root, multi-stage image suitable 
 
 ### Multi-stage build separates build-time from runtime
 
-The **builder stage** uses `cgr.dev/chainguard/python:*-dev` (or `cgr.dev/chainguard/uv:*-dev`), which ships with a shell, package manager, and toolchain needed to compile native wheels. The **runtime stage** uses the minimal `cgr.dev/chainguard/python:*` image — no shell, no package manager, no build tools. Only the resolved virtualenv and application source are copied across, so build dependencies never ship to production.
+The **builder stage** uses `cgr.dev/chainguard/python:*-dev`, which ships with a shell, `pip`, and the toolchain needed to compile native wheels. The `Dockerfile.uv` variant bootstraps `uv` in the builder if the base image does not already provide it. The **runtime stage** uses the minimal `cgr.dev/chainguard/python:*` image — no shell, no package manager, no build tools. Only the resolved virtualenv and application source are copied across, so build dependencies never ship to production.
 
 Result: smaller final image, fewer installed packages, and a much smaller attack surface.
 

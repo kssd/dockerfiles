@@ -6,6 +6,7 @@
     "davidanson.vscode-markdownlint",
     "editorconfig.editorconfig",
     "redhat.vscode-yaml",
-    "github.vscode-github-actions"
+    "github.vscode-github-actions",
+    "jasonnutter.vscode-codeowners"
   ]
 }
