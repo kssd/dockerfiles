@@ -1,0 +1,17 @@
+{
+  "name": "dockerfiles",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Best practices and templates for building efficient and secure Docker images.",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "lint:docker": "find . -type f \\( -name 'Dockerfile' -o -name 'Dockerfile.*' -o -name '*.dockerfile' \\) -not -path './node_modules/*' -print0 | xargs -0 -I{} hadolint --config .hadolint.yaml {}",
+    "lint": "npm run lint:md && npm run lint:docker && npm run format:check"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "^0.13.0",
+    "prettier": "^3.3.3"
+  }
+}

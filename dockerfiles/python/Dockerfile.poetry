@@ -1,0 +1,72 @@
+# Python application image using Poetry for dependency management.
+#
+# Poetry is installed into an isolated /opt/poetry tree in the builder stage
+# (works regardless of which user the base image runs as) and used to:
+#   1. Validate that poetry.lock is in sync with pyproject.toml (`poetry check --lock`).
+#   2. Export a hash-pinned requirements.txt for pip.
+# pip then installs the locked dependencies into /opt/deps with --require-hashes
+# for integrity verification. Poetry itself never ships to the runtime image.
+#
+# Notes on Poetry versions:
+#   - 1.x: `poetry export` is built in.
+#   - 2.x: `poetry export` is provided by `poetry-plugin-export` and must be
+#     installed alongside Poetry (e.g. `pip install poetry==2.* poetry-plugin-export`).
+#
+# Expected build context:
+#   ./pyproject.toml   - project metadata and dependencies (Poetry-managed)
+#   ./poetry.lock      - locked dependency graph (poetry lock)
+#   ./main.py          - default entry point (override ENTRYPOINT if different)
+#   ./.dockerignore    - must exclude .venv/
+#
+# Build:
+#   docker build --build-arg BASE_TAG=3.12 -t myapp -f Dockerfile.poetry .
+#
+# If your project declares a script entry point under [tool.poetry.scripts],
+# change the final ENTRYPOINT to ["myscript"] instead of ["python", "main.py"].
+#
+# Runtime runs as the `nonroot` user from the Chainguard base image.
+ARG BASE_TAG=3.12
+ARG POETRY_VERSION=1.8.3
+
+FROM cgr.dev/chainguard/python:${BASE_TAG}-dev AS builder
+ARG POETRY_VERSION
+USER root
+WORKDIR /app
+ENV POETRY_NO_INTERACTION=1 \
+    PATH="/opt/poetry/bin:$PATH" \
+    PYTHONPATH=/opt/poetry
+
+# Install Poetry into an isolated location so it does not depend on the
+# builder image's default user or its $HOME layout.
+RUN python -m pip install --no-cache-dir --target=/opt/poetry "poetry==${POETRY_VERSION}"
+
+# Validate lockfile is in sync, then export a hash-pinned requirements.txt.
+COPY pyproject.toml poetry.lock ./
+RUN python -m poetry check --lock && \
+    python -m poetry export --only=main -f requirements.txt -o /tmp/requirements.txt
+
+# Install dependencies into a target directory with hash verification.
+# --no-deps is required by --require-hashes; the exported file already
+# pins the full transitive graph.
+RUN python -m pip install --no-cache-dir --no-deps --require-hashes \
+        --target=/opt/deps -r /tmp/requirements.txt
+
+# Application source.
+COPY . /app/src
+
+# Drop privileges at end of builder stage to satisfy hadolint DL3002. The
+# runtime stage sets its own USER; this only affects the discarded builder.
+USER nonroot
+
+FROM cgr.dev/chainguard/python:${BASE_TAG}
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/opt/deps:/app
+
+COPY --from=builder --chown=nonroot:nonroot /opt/deps /opt/deps
+COPY --from=builder --chown=nonroot:nonroot /app/src /app
+
+USER nonroot
+
+ENTRYPOINT ["python", "main.py"]

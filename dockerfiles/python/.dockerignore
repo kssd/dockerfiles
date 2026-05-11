@@ -1,0 +1,99 @@
+# Build-context exclusions for the Python Dockerfile templates.
+#
+# IMPORTANT: keep `.venv` excluded — the builder stages create a venv at
+# /app/.venv inside the image; a host `.venv/` copied through `COPY . .`
+# would clobber it and ship the host's Python binary into the image.
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Python bytecode / caches
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv
+venv
+env
+ENV
+.env
+.python-version
+
+# Build / dist artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+pip-wheel-metadata/
+wheels/
+
+# Test / coverage
+.pytest_cache
+.tox
+.nox
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Type checkers / linters
+.mypy_cache
+.pyre/
+.pytype/
+.ruff_cache
+.dmypy.json
+
+# Notebooks
+.ipynb_checkpoints
+
+# Node tooling that sometimes coexists with Python projects
+node_modules/
+
+# Editor / OS
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker / CI
+Dockerfile*
+.dockerignore
+.github
+.gitlab-ci.yml
+
+# Docs / misc
+*.md
+LICENSE
+docs/
+tests/
+
+# Secrets / credentials (defense in depth — these should not be in the
+# build context in the first place, but exclude them in case they are).
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+.aws/
+.kube/
+.ssh/
+secrets/
+credentials
+credentials.*
+
+# Locals
+*.local.*
+*.local

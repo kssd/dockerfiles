@@ -1,0 +1,41 @@
+# Python application image (Chainguard + uv, multi-stage).
+#
+# Builder uses cgr.dev/chainguard/uv (uv preinstalled); runtime is the minimal
+# Chainguard python image. Two-phase `uv sync` separates dependency install
+# from project install for better layer caching.
+#
+# Expected build context:
+#   ./pyproject.toml   - project metadata and dependencies
+#   ./uv.lock          - locked dependency graph (uv lock)
+#   ./main.py          - default entry point (override ENTRYPOINT if different)
+#   ./.dockerignore    - must exclude .venv/ to avoid clobbering the builder venv
+#
+# Build:
+#   docker build --build-arg BASE_TAG=3.12 -t myapp -f Dockerfile.uv .
+#
+# Override entry point at runtime:
+#   docker run --entrypoint python myapp -m mypkg
+ARG BASE_TAG=3.12
+FROM cgr.dev/chainguard/uv:${BASE_TAG}-dev AS builder
+WORKDIR /app
+ENV VIRTUAL_ENV=/app/.venv \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    UV_LINK_MODE=copy
+
+COPY pyproject.toml uv.lock ./
+RUN uv venv --relocatable "$VIRTUAL_ENV" && \
+    uv sync --frozen --no-dev --no-cache --no-install-project
+COPY . .
+RUN uv sync --frozen --no-dev --no-cache
+
+FROM cgr.dev/chainguard/python:${BASE_TAG}
+WORKDIR /app
+ENV VIRTUAL_ENV=/app/.venv \
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY --from=builder --chown=nonroot:nonroot /app /app
+USER nonroot
+
+ENTRYPOINT ["python", "main.py"]
