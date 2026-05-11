@@ -1,10 +1,42 @@
-# Dockerfiles
+# Dockerfile Templates — Secure, Multi-Stage Production Images
 
-Best practices and templates for building efficient and secure Docker images.
+Reference Dockerfiles and best-practice guides for building **secure container images**: distroless, non-root, hadolint-clean, multi-stage. Python is the first ecosystem covered; Node, TypeScript, Go, Rust, and JAX are planned.
 
-## Layout
+## Available Dockerfile templates
 
-- `dockerfiles/` — Dockerfile templates organized per ecosystem (e.g. `node/`, `python/`, `go/`).
+### Python Dockerfile templates
+
+Secure Python Docker images, distroless Python, Poetry / uv builds, AWS Lambda Python container images, and an agent sandbox container for LLM-generated code.
+
+- pip + Chainguard → [dockerfiles/python/Dockerfile.python](dockerfiles/python/Dockerfile.python)
+- uv + Chainguard → [dockerfiles/python/Dockerfile.uv](dockerfiles/python/Dockerfile.uv)
+- Poetry → [dockerfiles/python/Dockerfile.poetry](dockerfiles/python/Dockerfile.poetry)
+- Google Distroless → [dockerfiles/python/Dockerfile.distroless](dockerfiles/python/Dockerfile.distroless)
+- AWS Lambda container image → [dockerfiles/python/Dockerfile.lambda](dockerfiles/python/Dockerfile.lambda)
+- Agent sandbox container → [dockerfiles/python/Dockerfile.sandbox](dockerfiles/python/Dockerfile.sandbox)
+
+Full documentation: [dockerfiles/python/README.md](dockerfiles/python/README.md).
+
+### Node Dockerfile templates _(planned)_
+
+### TypeScript Dockerfile templates _(planned)_
+
+### Go Dockerfile templates _(planned)_
+
+### Rust Dockerfile templates _(planned)_
+
+### JAX Dockerfile templates _(planned)_
+
+## Why these Dockerfile templates
+
+- **Multi-stage builds** keep build toolchains out of runtime images.
+- **Non-root containers** with explicit `USER` directives.
+- **Pinned base tags and locked dependencies** — reproducible, scanner-friendly.
+- **Hadolint-clean** at the `warning` threshold; CI enforces it.
+
+## Repository layout
+
+- `dockerfiles/` — Dockerfile templates organized per ecosystem (e.g. `python/`, `node/`, `go/`).
 - `docs/` — Best-practice guides (multi-stage builds, image hardening, caching, etc.).
 
 ## Tooling
