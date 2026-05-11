@@ -219,3 +219,4 @@ When the agent legitimately needs egress, attach a constrained network (e.g. a d
 - [ ] Run with `--read-only`, `--cap-drop=ALL`, `--security-opt=no-new-privileges`.
 - [ ] Set resource limits (`--memory`, `--cpus`) — defense against runaway processes.
 - [ ] Scan the built image (`grype`, `trivy`, or Chainguard's own scanner) before publishing.
+- [ ] Sign the image, SBOM, and SLSA provenance with Cosign and verify at admission time — see [`docs/supply-chain.md`](../../docs/supply-chain.md).

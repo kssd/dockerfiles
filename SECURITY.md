@@ -57,6 +57,8 @@ Templates in `dockerfiles/` aim to meet **all** of the following unless a varian
 
 A regression against any of these in a merged template is a valid security report.
 
+For the post-build half of the picture — SBOMs, image signing, SLSA build provenance, and admission-time verification — see [`docs/supply-chain.md`](docs/supply-chain.md).
+
 ## Out of scope
 
 - Vulnerabilities in upstream base images themselves (report upstream).

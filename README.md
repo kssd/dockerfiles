@@ -49,6 +49,10 @@ Full documentation: [dockerfiles/python/README.md](dockerfiles/python/README.md)
 - `dockerfiles/` — Dockerfile templates organized per ecosystem (e.g. `python/`, `node/`, `go/`).
 - `docs/` — Best-practice guides (multi-stage builds, image hardening, caching, etc.).
 
+## Guides
+
+- [Secure software supply chain for Docker images](docs/supply-chain.md) — SBOMs, Cosign signing, SLSA provenance, and Kyverno admission control. Applies to every ecosystem in this repo.
+
 ## Tooling
 
 Requires Node.js 20+ (for the lint tooling only) and [hadolint](https://github.com/hadolint/hadolint) on `PATH`.
