@@ -1,4 +1,4 @@
-# Dockerfile Templates — Secure, Multi-Stage Production Images
+# Dockerfiles — Secure, Multi-Stage Production Images
 
 > Production-grade [Docker](https://www.docker.com/) image templates: [distroless](https://github.com/GoogleContainerTools/distroless), non-root, [hadolint](https://github.com/hadolint/hadolint)-clean, [multi-stage](https://docs.docker.com/build/building/multi-stage/), and signed-supply-chain ready.
 
@@ -87,6 +87,7 @@ Tracked as issues — comment or 👍 to bump priority.
 ## Guides
 
 - **[Secure software supply chain for Docker images](docs/supply-chain.md)** — [SBOMs](https://www.cisa.gov/sbom), [Cosign](https://docs.sigstore.dev/cosign/overview/) signing (keyless and key-based), [SLSA v1.0](https://slsa.dev/spec/v1.0/) provenance, and [Kyverno](https://kyverno.io/docs/writing-policies/verify-images/sigstore/) admission control. Applies to every ecosystem in this repo.
+- **[Sandboxing LLM-agent-generated code](docs/sandboxing-agent-code.md)** — threat model, the full `docker run` hardening flag stack with rationale, [Kubernetes](https://kubernetes.io/docs/concepts/security/pod-security-standards/) / Compose / Lambda / [Fargate](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html) equivalents, and when to graduate to [gVisor](https://gvisor.dev/) / [Firecracker](https://firecracker-microvm.github.io/) / [Kata](https://katacontainers.io/).
 
 ## Repository layout
 

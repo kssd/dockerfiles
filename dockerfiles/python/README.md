@@ -210,6 +210,8 @@ When the agent legitimately needs egress, attach a constrained network (e.g. a d
 
 **Do not** add tools at run time. If the agent needs a new tool, extend `Dockerfile.sandbox`'s pinned install layers and rebuild — that keeps the toolbox auditable.
 
+For the full operational guide — threat model, every hardening flag with rationale, Kubernetes / Compose / Lambda equivalents, and when to graduate to gVisor / Firecracker / Kata — see [`docs/sandboxing-agent-code.md`](../../docs/sandboxing-agent-code.md).
+
 ## Hardening checklist
 
 - [ ] Keep `BASE_TAG` pinned to a real minor (default `3.12`) — never `latest`.
