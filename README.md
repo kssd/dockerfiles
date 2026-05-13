@@ -106,6 +106,7 @@ Tracked as issues — comment or 👍 to bump priority.
 
 - **[Secure software supply chain for Docker images](docs/supply-chain.md)** — [SBOMs](https://www.cisa.gov/sbom), [Cosign](https://docs.sigstore.dev/cosign/overview/) signing (keyless and key-based), [SLSA v1.0](https://slsa.dev/spec/v1.0/) provenance, and [Kyverno](https://kyverno.io/docs/writing-policies/verify-images/sigstore/) admission control. Applies to every ecosystem in this repo.
 - **[Sandboxing LLM-agent-generated code](docs/sandboxing-agent-code.md)** — threat model, the full `docker run` hardening flag stack with rationale, [Kubernetes](https://kubernetes.io/docs/concepts/security/pod-security-standards/) / Compose / Lambda / [Fargate](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html) equivalents, and when to graduate to [gVisor](https://gvisor.dev/) / [Firecracker](https://firecracker-microvm.github.io/) / [Kata](https://katacontainers.io/).
+- **[Building multi-platform Docker images](docs/multi-platform-builds.md)** — local `docker buildx` setup, QEMU vs native cross-compilation, Go / Rust / Node patterns, GitHub Actions workflows with caching, and common pitfalls.
 
 ## Repository layout
 
