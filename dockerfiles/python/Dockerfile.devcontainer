@@ -23,9 +23,11 @@
 #
 # All extra tools are pinned to explicit versions.
 #
-# pipx installs land in /usr/local/py-utils (owned by the vscode user in the
-# base image, already on PATH). pip --user installs land in
-# ~/.local/{lib,bin}; PATH is extended to include ~/.local/bin.
+# The base image pre-installs black, mypy, and pytest as root into
+# /usr/local/py-utils. Those are re-pinned here as root (before USER vscode)
+# so our ARG versions win over future base-image bumps. uv, poetry, ruff, and
+# ipython are not in the base and are installed as vscode into the same path.
+# debugpy is installed via pip --user so it is importable from project venvs.
 #
 # This image is paired with .devcontainer/devcontainer.json, which wires
 # the VS Code Python extension, workspace mount, and remoteUser.
@@ -40,18 +42,27 @@ FROM mcr.microsoft.com/devcontainers/python:${DEVCONTAINER_TAG}
 ARG UV_VERSION=0.4.29
 ARG POETRY_VERSION=1.8.4
 ARG RUFF_VERSION=0.6.9
-ARG BLACK_VERSION=24.10.0
-ARG MYPY_VERSION=1.11.2
-ARG PYTEST_VERSION=8.3.3
+ARG BLACK_VERSION=25.1.0
+ARG MYPY_VERSION=1.16.1
+ARG PYTEST_VERSION=8.4.1
 ARG IPYTHON_VERSION=8.27.0
 ARG DEBUGPY_VERSION=1.8.7
 
+# The base image bundles a Yarn apt source whose GPG key has expired. Remove
+# it before apt-get update so the update does not fail on a signing error.
 # hadolint ignore=DL3008
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN rm -f /etc/apt/sources.list.d/yarn.list \
+    && apt-get update && apt-get install --no-install-recommends -y \
         build-essential \
         direnv \
         gh \
     && rm -rf /var/lib/apt/lists/*
+
+# Re-pin tools the base pre-installs as root. Their venvs are root-owned, so
+# --force here (still running as root) is required to replace them.
+RUN pipx install --force "black==${BLACK_VERSION}" \
+    && pipx install --force "mypy==${MYPY_VERSION}" \
+    && pipx install --force "pytest==${PYTEST_VERSION}"
 
 USER vscode
 
@@ -59,14 +70,10 @@ ENV PATH="/home/vscode/.local/bin:${PATH}"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install CLI tools via pipx into /usr/local/py-utils (already on PATH).
-# Each tool gets an isolated venv; pipx manages the PATH symlinks.
+# Install tools not provided by the base into /usr/local/py-utils (on PATH).
 RUN pipx install "uv==${UV_VERSION}" \
     && pipx install "poetry==${POETRY_VERSION}" \
     && pipx install "ruff==${RUFF_VERSION}" \
-    && pipx install "black==${BLACK_VERSION}" \
-    && pipx install "mypy==${MYPY_VERSION}" \
-    && pipx install "pytest==${PYTEST_VERSION}" \
     && pipx install "ipython==${IPYTHON_VERSION}"
 
 # Install debugpy via pip --user: VS Code uses it as both a library and a
