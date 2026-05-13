@@ -1,0 +1,51 @@
+# Go application image (CGO_ENABLED=0 + Chainguard static, multi-stage).
+#
+# Chainguard sibling of Dockerfile.go. Builds with cgr.dev/chainguard/go
+# and ships in cgr.dev/chainguard/static — daily-rebuilt, Sigstore-signed,
+# with SLSA provenance and SBOMs.
+#
+# Free vs. paid Chainguard tags:
+#   The free Developer Edition only publishes :latest. Versioned tags
+#   like :1.23 require a paid Chainguard subscription. For free-tier
+#   reproducibility, pin by digest instead of relying on :latest:
+#
+#     docker pull cgr.dev/chainguard/go:latest
+#     docker inspect --format='{{index .RepoDigests 0}}' cgr.dev/chainguard/go:latest
+#     # then bake the digest into the FROM lines.
+#
+#   Refresh the digest deliberately (e.g. weekly) and re-scan.
+#
+# CGO trade-off:
+#   CGO_ENABLED=0 means any package that wraps a C library will fail to
+#   compile. If CGO is required, switch to cgr.dev/chainguard/glibc-dynamic
+#   for the runtime and set CGO_ENABLED=1.
+#
+# Multi-arch builds:
+#   Use --platform=$BUILDPLATFORM on the builder so the compiler runs
+#   natively; TARGETOS / TARGETARCH control the output binary.
+#
+# Expected build context:
+#   ./go.mod, ./go.sum, ./**/*.go
+#
+# Build (free tier — pin by digest in production):
+#   docker build --platform=linux/amd64 -t myapp -f Dockerfile.go.chainguard .
+ARG BASE_TAG=latest
+
+FROM --platform=$BUILDPLATFORM cgr.dev/chainguard/go:${BASE_TAG} AS builder
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -trimpath -ldflags="-s -w" -o /out/app .
+
+FROM cgr.dev/chainguard/static:${BASE_TAG}
+COPY --from=builder /out/app /app
+
+USER nonroot
+
+ENTRYPOINT ["/app"]

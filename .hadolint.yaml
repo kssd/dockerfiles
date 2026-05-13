@@ -8,3 +8,4 @@ trustedRegistries:
   - registry.k8s.io
   - public.ecr.aws
   - cgr.dev
+  - mcr.microsoft.com

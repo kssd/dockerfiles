@@ -1,0 +1,48 @@
+# Go application image for AWS Lambda (custom runtime on provided.al2023).
+#
+# Lambda Go custom runtime uses provided.al2023 (Amazon Linux 2023). The
+# runtime entry point MUST be a binary named `bootstrap` at the root of the
+# container. There is no handler address like Python's CMD ["module.func"] —
+# the bootstrap binary is the runtime itself and communicates with Lambda
+# via the Runtime API.
+#
+# The aws-lambda-go SDK (github.com/aws/aws-lambda-go) handles the
+# Lambda Runtime API loop. Add it to your go.mod:
+#   go get github.com/aws/aws-lambda-go
+#
+# Multi-arch:
+#   Lambda supports x86_64 and arm64. Build for your function's architecture:
+#     --platform=linux/amd64  (x86_64)
+#     --platform=linux/arm64  (arm64, Graviton — ~20% cheaper)
+#   GOOS is always linux; GOARCH is derived from TARGETARCH.
+#
+# Expected build context:
+#   ./go.mod, ./go.sum, ./**/*.go
+#   main package must call lambda.Start() (aws-lambda-go)
+#
+# Build:
+#   docker build --platform=linux/amd64 --build-arg GO_VERSION=1.23 \
+#       -t myapp-lambda -f Dockerfile.lambda .
+#
+# Local invocation (Lambda Runtime Interface Emulator is included):
+#   docker run --rm -p 9000:8080 myapp-lambda
+#   curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" \
+#       -d '{"key":"value"}'
+ARG GO_VERSION=1.23
+
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS builder
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -trimpath -ldflags="-s -w" -o /out/bootstrap .
+
+FROM public.ecr.aws/lambda/provided:al2023
+COPY --from=builder /out/bootstrap /var/runtime/bootstrap
+
+ENTRYPOINT ["/var/runtime/bootstrap"]

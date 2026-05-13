@@ -73,13 +73,31 @@ Secure [Python](https://www.python.org/) Docker images on [**Google Distroless**
 
 Full documentation: [`dockerfiles/python/README.md`](dockerfiles/python/README.md).
 
+### Go — statically-linked binaries on Distroless static
+
+Fully-static Go binaries (`CGO_ENABLED=0`) built with the official `golang:*-bookworm` image and shipped in [`gcr.io/distroless/static-debian12:nonroot`](https://github.com/GoogleContainerTools/distroless) — no libc, no shell, typically under 10 MB total image size.
+
+**Distroless (default — freely pinnable to versioned tags):**
+
+- Static binary → [`dockerfiles/go/Dockerfile.go`](dockerfiles/go/Dockerfile.go)
+
+**Chainguard (signed, attested, daily-rebuilt; free-tier compatible via digest-pinning):**
+
+- Chainguard static runtime → [`dockerfiles/go/Dockerfile.go.chainguard`](dockerfiles/go/Dockerfile.go.chainguard)
+
+**Specialized runtimes:**
+
+- [AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/lambda-golang.html) custom runtime (`bootstrap` binary on `provided:al2023`) → [`dockerfiles/go/Dockerfile.lambda`](dockerfiles/go/Dockerfile.lambda)
+- VS Code devcontainer (Go 1.23 + golangci-lint + Delve) → [`dockerfiles/go/Dockerfile.devcontainer`](dockerfiles/go/Dockerfile.devcontainer)
+
+Full documentation: [`dockerfiles/go/README.md`](dockerfiles/go/README.md).
+
 ### Coming soon
 
 Tracked as issues — comment or 👍 to bump priority.
 
 - [Node.js Dockerfile templates](https://github.com/kssd/dockerfiles/issues/6) _(planned)_
 - [TypeScript Dockerfile templates](https://github.com/kssd/dockerfiles/issues/9) _(planned)_
-- [Go Dockerfile templates](https://github.com/kssd/dockerfiles/issues/7) _(planned)_
 - [Rust Dockerfile templates](https://github.com/kssd/dockerfiles/issues/8) _(planned)_
 - [JAX Dockerfile templates](https://github.com/kssd/dockerfiles/issues/5) _(planned)_
 - [Zig Dockerfile templates](https://github.com/kssd/dockerfiles/issues/11) _(planned)_
@@ -169,4 +187,4 @@ PRs welcome — especially for the planned ecosystems above. Read [`CONTRIBUTING
 
 ---
 
-<sub>Keywords: <a href="https://www.docker.com/">Docker</a> · <a href="https://docs.docker.com/engine/reference/builder/">Dockerfile</a> · <a href="https://github.com/GoogleContainerTools/distroless">Distroless</a> · <a href="https://www.chainguard.dev/chainguard-images">Chainguard</a> · <a href="https://docs.docker.com/build/building/multi-stage/">multi-stage build</a> · <a href="https://github.com/hadolint/hadolint">hadolint</a> · <a href="https://www.python.org/">Python</a> · <a href="https://github.com/astral-sh/uv">uv</a> · <a href="https://python-poetry.org/">Poetry</a> · <a href="https://docs.aws.amazon.com/lambda/latest/dg/python-image.html">AWS Lambda container image</a> · <a href="https://docs.sigstore.dev/cosign/overview/">Cosign</a> · <a href="https://slsa.dev/spec/v1.0/">SLSA</a> · <a href="https://spdx.dev/">SPDX SBOM</a> · <a href="https://kyverno.io/">Kyverno</a> · <a href="https://modelcontextprotocol.io/">MCP</a> · <a href="https://opencontainers.org/">OCI</a> · container security · supply-chain security · non-root container · agent sandbox</sub>
+<sub>Keywords: <a href="https://www.docker.com/">Docker</a> · <a href="https://docs.docker.com/engine/reference/builder/">Dockerfile</a> · <a href="https://github.com/GoogleContainerTools/distroless">Distroless</a> · <a href="https://www.chainguard.dev/chainguard-images">Chainguard</a> · <a href="https://docs.docker.com/build/building/multi-stage/">multi-stage build</a> · <a href="https://github.com/hadolint/hadolint">hadolint</a> · <a href="https://www.python.org/">Python</a> · <a href="https://go.dev/">Go</a> · <a href="https://github.com/astral-sh/uv">uv</a> · <a href="https://python-poetry.org/">Poetry</a> · <a href="https://docs.aws.amazon.com/lambda/latest/dg/python-image.html">AWS Lambda container image</a> · <a href="https://docs.sigstore.dev/cosign/overview/">Cosign</a> · <a href="https://slsa.dev/spec/v1.0/">SLSA</a> · <a href="https://spdx.dev/">SPDX SBOM</a> · <a href="https://kyverno.io/">Kyverno</a> · <a href="https://modelcontextprotocol.io/">MCP</a> · <a href="https://opencontainers.org/">OCI</a> · container security · supply-chain security · non-root container · agent sandbox</sub>

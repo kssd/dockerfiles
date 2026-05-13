@@ -1,0 +1,49 @@
+# Go devcontainer image for VS Code Remote-Containers / Dev Containers.
+#
+# Based on the official Microsoft Go devcontainer base image, which ships
+# Go, git, a non-root `vscode` user (UID 1000), and common dev utilities.
+# The image is intentionally fat compared to the production variants —
+# developer ergonomics over minimal size.
+#
+# Pinned to a minor version tag (1-1.23-bookworm), not :latest, so builds
+# are reproducible and PR reviews can see version bumps.
+#
+# Extra tools installed here:
+#   - golangci-lint  — standard multi-linter runner
+#   - staticcheck    — advanced static analysis
+#   - dlv            — Delve debugger (the VS Code Go extension depends on it)
+#   - goose          — common DB migration tool (remove if unused)
+#
+# All extra tools are pinned to explicit versions.
+#
+# This image is paired with .devcontainer/devcontainer.json, which wires
+# the VS Code Go extension, workspace mount, and remoteUser.
+#
+# Build:
+#   docker build -t go-dev -f Dockerfile.devcontainer .
+#   (normally invoked automatically by VS Code "Reopen in Container")
+ARG DEVCONTAINER_TAG=1-1.23-bookworm
+
+FROM mcr.microsoft.com/devcontainers/go:${DEVCONTAINER_TAG}
+
+ARG GOLANGCI_LINT_VERSION=1.62.2
+ARG STATICCHECK_VERSION=2024.1.1
+ARG DLV_VERSION=1.23.1
+ARG GOOSE_VERSION=3.22.1
+
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install --no-install-recommends -y \
+        make \
+        jq \
+    && rm -rf /var/lib/apt/lists/*
+
+USER vscode
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN curl -sSfL \
+        "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" \
+    | sh -s -- -b "$(go env GOPATH)/bin" "v${GOLANGCI_LINT_VERSION}" \
+    && go install "honnef.co/go/tools/cmd/staticcheck@v${STATICCHECK_VERSION}" \
+    && go install "github.com/go-delve/delve/cmd/dlv@v${DLV_VERSION}" \
+    && go install "github.com/pressly/goose/v3/cmd/goose@v${GOOSE_VERSION}" \
+    && go clean -cache

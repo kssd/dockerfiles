@@ -1,0 +1,64 @@
+# Build outputs
+bin/
+out/
+*.test
+*.prof
+coverage.out
+coverage.html
+
+# Vendor (only if not committed — remove this line if you commit vendor/)
+vendor/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker / CI
+Dockerfile*
+.dockerignore
+.github
+.gitlab-ci.yml
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Devcontainer (not needed in production image build context)
+.devcontainer/
+
+# Virtual environments
+.env
+.envrc
+
+# Docs / lint config
+*.md
+.hadolint.yaml
+.editorconfig
+.golangci.yml
+
+# Secrets / credentials (defense in depth — these should not be in the
+# build context in the first place, but exclude them in case they are).
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+.aws/
+.kube/
+.ssh/
+secrets/
+credentials
+credentials.*
+
+# Locals
+*.local.*
+*.local
