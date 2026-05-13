@@ -24,7 +24,10 @@
         "go.vetOnSave": "workspace",
         "editor.formatOnSave": true,
         "[go]": {
-          "editor.defaultFormatter": "golang.go"
+          "editor.defaultFormatter": "golang.go",
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "always"
+          }
         }
       }
     }
