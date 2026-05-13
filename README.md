@@ -70,6 +70,7 @@ Secure [Python](https://www.python.org/) Docker images on [**Google Distroless**
 
 - [AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/python-image.html) container image → [`dockerfiles/python/Dockerfile.lambda`](dockerfiles/python/Dockerfile.lambda)
 - Agent sandbox for untrusted LLM-generated code → [`dockerfiles/python/Dockerfile.sandbox`](dockerfiles/python/Dockerfile.sandbox)
+- VS Code devcontainer (Python 3.12 + uv + Poetry + ruff + mypy + pytest) → [`dockerfiles/python/Dockerfile.devcontainer`](dockerfiles/python/Dockerfile.devcontainer)
 
 Full documentation: [`dockerfiles/python/README.md`](dockerfiles/python/README.md).
 

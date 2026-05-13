@@ -1,21 +1,22 @@
 # Secure Python Docker Image Templates
 
-Reference Dockerfiles for building **secure Python Docker images** in production — including **distroless Python**, Poetry / uv builds, **AWS Lambda Python container images**, and an **agent sandbox container** for running LLM-generated code. Eight variants are provided: pick the one that matches your dependency tooling and runtime target.
+Reference Dockerfiles for building **secure Python Docker images** in production — including **distroless Python**, Poetry / uv builds, **AWS Lambda Python container images**, an **agent sandbox container** for running LLM-generated code, and a **VS Code devcontainer** for local development. Nine variants are provided: pick the one that matches your dependency tooling and runtime target.
 
 **Default runtime is Google Distroless (`gcr.io/distroless/python3-debian12:nonroot`).** Chainguard variants are provided as siblings (`Dockerfile.*.chainguard`) for users who prefer Chainguard's daily-rebuilt, signed/attested images. Chainguard's free Developer Edition only publishes `:latest` / `:latest-dev`; versioned tags like `:3.12-dev` require a paid subscription. The Chainguard variants in this repo default to `:latest-dev` and document digest-pinning so free-tier users can still get reproducible builds.
 
-| File                           | Dependency manager                                                          | Runtime base                          | Use when                                                                                                                                          |
-| ------------------------------ | --------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Dockerfile.python`            | `pip` + `requirements.txt`                                                  | Google Distroless                     | The project pins deps in `requirements.txt` and does not use `pyproject.toml` / `uv.lock`.                                                        |
-| `Dockerfile.uv`                | [`uv`](https://docs.astral.sh/uv/) + `pyproject.toml` + `uv.lock`           | Google Distroless                     | The project uses `uv` for resolution and locking (recommended for new projects — faster, deterministic, PEP 621).                                 |
-| `Dockerfile.poetry`            | [Poetry](https://python-poetry.org/) + `pyproject.toml` + `poetry.lock`     | Google Distroless                     | The project uses Poetry. Poetry exports a hash-pinned `requirements.txt` in the builder; the runtime image does not contain Poetry itself.        |
-| `Dockerfile.python.chainguard` | `pip` + `requirements.txt`                                                  | Chainguard Python                     | You prefer Chainguard's signed/attested base over Distroless. Free-tier-compatible (`:latest-dev` default; pin by digest for reproducibility).    |
-| `Dockerfile.uv.chainguard`     | `uv` + `pyproject.toml` + `uv.lock`                                         | Chainguard Python                     | uv workflow on Chainguard. Same paywall/digest-pin notes as above.                                                                                |
-| `Dockerfile.poetry.chainguard` | Poetry + `pyproject.toml` + `poetry.lock`                                   | Chainguard Python                     | Poetry workflow on Chainguard. Same paywall/digest-pin notes as above.                                                                            |
-| `Dockerfile.lambda`            | `pip` + `requirements.txt`                                                  | `public.ecr.aws/lambda/python`        | Deploying to AWS Lambda as a container image. Uses the Lambda Runtime Interface Client preinstalled in the base.                                  |
-| `Dockerfile.sandbox`           | `python:*-slim` + curated, pinned tools (`git`, `curl`, `jq`, `ipython`, …) | `python:*-slim` (intentionally large) | Running LLM-agent-generated code. Non-root, tini-supervised, tool-rich on purpose. Pair with `--read-only`, `--network none`, tmpfs `/workspace`. |
+| File                           | Dependency manager                                                          | Runtime base                             | Use when                                                                                                                                                             |
+| ------------------------------ | --------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Dockerfile.python`            | `pip` + `requirements.txt`                                                  | Google Distroless                        | The project pins deps in `requirements.txt` and does not use `pyproject.toml` / `uv.lock`.                                                                           |
+| `Dockerfile.uv`                | [`uv`](https://docs.astral.sh/uv/) + `pyproject.toml` + `uv.lock`           | Google Distroless                        | The project uses `uv` for resolution and locking (recommended for new projects — faster, deterministic, PEP 621).                                                    |
+| `Dockerfile.poetry`            | [Poetry](https://python-poetry.org/) + `pyproject.toml` + `poetry.lock`     | Google Distroless                        | The project uses Poetry. Poetry exports a hash-pinned `requirements.txt` in the builder; the runtime image does not contain Poetry itself.                           |
+| `Dockerfile.python.chainguard` | `pip` + `requirements.txt`                                                  | Chainguard Python                        | You prefer Chainguard's signed/attested base over Distroless. Free-tier-compatible (`:latest-dev` default; pin by digest for reproducibility).                       |
+| `Dockerfile.uv.chainguard`     | `uv` + `pyproject.toml` + `uv.lock`                                         | Chainguard Python                        | uv workflow on Chainguard. Same paywall/digest-pin notes as above.                                                                                                   |
+| `Dockerfile.poetry.chainguard` | Poetry + `pyproject.toml` + `poetry.lock`                                   | Chainguard Python                        | Poetry workflow on Chainguard. Same paywall/digest-pin notes as above.                                                                                               |
+| `Dockerfile.lambda`            | `pip` + `requirements.txt`                                                  | `public.ecr.aws/lambda/python`           | Deploying to AWS Lambda as a container image. Uses the Lambda Runtime Interface Client preinstalled in the base.                                                     |
+| `Dockerfile.sandbox`           | `python:*-slim` + curated, pinned tools (`git`, `curl`, `jq`, `ipython`, …) | `python:*-slim` (intentionally large)    | Running LLM-agent-generated code. Non-root, tini-supervised, tool-rich on purpose. Pair with `--read-only`, `--network none`, tmpfs `/workspace`.                    |
+| `Dockerfile.devcontainer`      | uv, poetry, ruff, black, mypy, pytest, ipython, debugpy (all pinned)        | `mcr.microsoft.com/devcontainers/python` | Local development inside VS Code Remote-Containers or GitHub Codespaces. Human-oriented toolbox; intentionally fat. See [Developer container](#developer-container). |
 
-The seven application variants produce a minimal, non-root, multi-stage image suitable for production workloads. `Dockerfile.sandbox` is intentionally the opposite: a tool-rich, pinned, non-root environment for running untrusted agent-generated code (see [Agentic usage](#agentic-usage)). The default Distroless variants pin `BASE_TAG=3.12-slim` for reproducible out-of-the-box builds; the Chainguard variants default to `BASE_TAG=latest` for free-tier compatibility and rely on digest-pinning for reproducibility (see the header of each `*.chainguard` file).
+The seven application variants produce a minimal, non-root, multi-stage image suitable for production workloads. `Dockerfile.sandbox` is intentionally the opposite: a tool-rich, pinned, non-root environment for running untrusted agent-generated code (see [Agentic usage](#agentic-usage)). `Dockerfile.devcontainer` is the human-developer counterpart to the sandbox — full toolchain, persistent volumes, network on. The default Distroless variants pin `BASE_TAG=3.12-slim` for reproducible out-of-the-box builds; the Chainguard variants default to `BASE_TAG=latest` for free-tier compatibility and rely on digest-pinning for reproducibility (see the header of each `*.chainguard` file).
 
 ## Why these images are efficient
 
@@ -211,6 +212,79 @@ When the agent legitimately needs egress, attach a constrained network (e.g. a d
 **Do not** add tools at run time. If the agent needs a new tool, extend `Dockerfile.sandbox`'s pinned install layers and rebuild — that keeps the toolbox auditable.
 
 For the full operational guide — threat model, every hardening flag with rationale, Kubernetes / Compose / Lambda equivalents, and when to graduate to gVisor / Firecracker / Kata — see [`docs/sandboxing-agent-code.md`](../../docs/sandboxing-agent-code.md).
+
+## Developer container
+
+`Dockerfile.devcontainer` is the human-developer image in this collection — the **opposite** of the production and sandbox variants. Where production strips everything down to a minimal distroless runtime, the devcontainer keeps the full toolchain so a developer can clone, iterate, test, and debug without leaving the container.
+
+### What's included
+
+| Tool              | Version | Purpose                                    |
+| ----------------- | ------- | ------------------------------------------ |
+| `uv`              | 0.4.29  | Fast package manager and virtualenv runner |
+| `poetry`          | 1.8.4   | Poetry dependency manager                  |
+| `ruff`            | 0.6.9   | Linter and formatter                       |
+| `black`           | 24.10.0 | Formatter (for projects using Black)       |
+| `mypy`            | 1.11.2  | Static type checker                        |
+| `pytest`          | 8.3.3   | Test runner                                |
+| `ipython`         | 8.27.0  | Interactive REPL                           |
+| `debugpy`         | 1.8.7   | VS Code Python debugger adapter            |
+| `build-essential` | system  | Native extension compilation               |
+| `direnv`          | system  | Per-directory environment variables        |
+| `gh`              | system  | GitHub CLI                                 |
+
+The Microsoft base image (`mcr.microsoft.com/devcontainers/python`) already ships `git`, `curl`, `jq`, `make`, `pipx`, and a non-root `vscode` user (UID 1000). Only the tools above are layered on top.
+
+### Reopen in Container
+
+1. Open the project folder in VS Code.
+2. When prompted, click **Reopen in Container** (or run `Dev Containers: Reopen in Container` from the command palette).
+3. VS Code builds the image on first open. Subsequent opens use the layer cache — only tool-version bumps in the `ARG` lines invalidate it.
+4. `postCreateCommand` runs `uv sync` if a `pyproject.toml` exists, bringing the project virtualenv up to date inside the container.
+
+### Switching the Python minor
+
+Change the `DEVCONTAINER_TAG` build argument to use a different Python version:
+
+```dockerfile
+ARG DEVCONTAINER_TAG=1-3.11-bookworm   # switch to 3.11
+```
+
+Or pass it at build time:
+
+```bash
+docker build --build-arg DEVCONTAINER_TAG=1-3.11-bookworm \
+  -t python-dev -f Dockerfile.devcontainer .
+```
+
+Available tags follow the `1-<python-minor>-bookworm` pattern — see [Microsoft devcontainer images](https://github.com/devcontainers/images/tree/main/src/python) for the full list.
+
+### Prebuild caveats
+
+The devcontainer image is intentionally large (the base alone is ~1–2 GB). For team use:
+
+- **Prebuild with GitHub Codespaces or Actions** so first-open is fast. Set `DEVCONTAINER_TAG` to a digest-pinned ref for reproducible prebuilds:
+
+  ```bash
+  docker inspect --format='{{index .RepoDigests 0}}' \
+    mcr.microsoft.com/devcontainers/python:1-3.12-bookworm
+  # then set FROM mcr.microsoft.com/devcontainers/python@sha256:<digest>
+  ```
+
+- **Cache the pipx layer.** Tool installs (`pipx install uv==… && pipx install poetry==…`) are a single `RUN` layer. Bumping any tool version invalidates only that layer, not the apt layer before it.
+
+- **Do not run with `--read-only`** — devcontainers need a writable rootfs for extension mounts, the VS Code server, and `uv sync`.
+
+### Relationship to other variants
+
+|            | Devcontainer        | Sandbox                | Production            |
+| ---------- | ------------------- | ---------------------- | --------------------- |
+| User       | `vscode` (UID 1000) | `agent` (UID 10001)    | `nonroot` (UID 65532) |
+| Network    | On (full)           | Off (`--network none`) | App-defined           |
+| Filesystem | Writable            | Read-only + tmpfs      | Read-only             |
+| Shell      | Yes (`/bin/bash`)   | Yes (bash)             | No (distroless)       |
+| Toolchain  | Full dev toolbox    | Curated, audited       | None                  |
+| Use case   | Human developer     | LLM-generated code     | Production runtime    |
 
 ## Hardening checklist
 
