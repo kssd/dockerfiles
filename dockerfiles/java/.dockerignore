@@ -1,0 +1,42 @@
+# Maven build output
+target/
+
+# Gradle build output and cache
+build/
+.gradle/
+
+# Gradle wrapper jar (optional -- include if offline builds are needed)
+gradle/wrapper/gradle-wrapper.jar
+
+# Compiled class files
+*.class
+
+# Stale fat JARs in the source root
+*.jar
+
+# Editor and IDE
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+
+# Devcontainer
+.devcontainer/
+
+# Credentials and secrets
+.env
+*.pem
+*.key
+*.cert
+
+# CI
+.github/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+LICENSE

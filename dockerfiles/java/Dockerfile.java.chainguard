@@ -1,0 +1,36 @@
+# Java application image (Chainguard maven builder + Chainguard jre runtime).
+#
+# Chainguard sibling of Dockerfile.java. Builds with cgr.dev/chainguard/maven
+# and ships in cgr.dev/chainguard/jre — daily-rebuilt, Sigstore-signed, with
+# SLSA provenance and SBOMs attached.
+#
+# Free vs. paid Chainguard tags:
+#   The free Developer Edition only publishes :latest. Versioned tags
+#   require a paid Chainguard subscription. For free-tier reproducibility,
+#   pin by digest instead of relying on :latest:
+#
+#     docker pull cgr.dev/chainguard/maven:latest
+#     docker inspect --format='{{index .RepoDigests 0}}' cgr.dev/chainguard/maven:latest
+#     docker pull cgr.dev/chainguard/jre:latest
+#     docker inspect --format='{{index .RepoDigests 0}}' cgr.dev/chainguard/jre:latest
+#     # bake the digests into the FROM lines.
+#
+#   Refresh digests deliberately (e.g. weekly) and re-scan.
+#
+# Build (free tier -- pin by digest in production):
+#   docker build -t myapp -f Dockerfile.java.chainguard .
+ARG BASE_TAG=latest
+
+FROM cgr.dev/chainguard/maven:${BASE_TAG} AS builder
+WORKDIR /app
+COPY pom.xml ./
+RUN mvn dependency:go-offline -q
+COPY src ./src
+RUN mvn package -DskipTests -q && cp target/*.jar /app/app.jar
+
+FROM cgr.dev/chainguard/jre:${BASE_TAG}
+COPY --from=builder /app/app.jar /app/app.jar
+
+USER java
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

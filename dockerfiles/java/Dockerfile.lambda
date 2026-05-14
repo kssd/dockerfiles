@@ -1,0 +1,40 @@
+# Java AWS Lambda image (Eclipse Temurin builder + Lambda java runtime).
+#
+# Uses Eclipse Temurin to build a fat JAR, then copies it into the AWS Lambda
+# Java base image which ships the Lambda Runtime Interface Client (RIC) and
+# the Lambda Runtime Interface Emulator (RIE) for local testing.
+#
+# Handler class:
+#   Set CMD to "com.example.MyHandler::handleRequest" (fully qualified class
+#   name :: method name). The Lambda Java runtime invokes this method for
+#   each event.
+#
+# SnapStart:
+#   Enable AWS Lambda SnapStart (Java 21 Managed Runtime) to take a snapshot
+#   after initialization and restore it on cold starts — cuts cold start from
+#   ~400ms to ~10ms for typical Spring Boot apps. Requires:
+#     - Lambda function runtime: Java 21 (Managed Runtime, not container image)
+#     - OR: configure CRaC (Coordinated Restore at Checkpoint) in your app for
+#       container-based Lambda SnapStart.
+#   See: https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html
+#
+# Build:
+#   docker build --platform=linux/amd64 -t myapp-lambda -f Dockerfile.lambda .
+#
+# Local invocation (Lambda Runtime Interface Emulator):
+#   docker run --rm -p 9000:8080 myapp-lambda
+#   curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" \
+#       -d '{"key":"value"}'
+ARG JAVA_VERSION=21
+
+FROM eclipse-temurin:${JAVA_VERSION}-jdk-jammy AS builder
+WORKDIR /app
+COPY pom.xml ./
+RUN mvn dependency:go-offline -q
+COPY src ./src
+RUN mvn package -DskipTests -q
+
+FROM public.ecr.aws/lambda/java:${JAVA_VERSION}
+COPY --from=builder /app/target/*.jar ${LAMBDA_TASK_ROOT}/
+
+CMD ["com.example.Handler::handleRequest"]

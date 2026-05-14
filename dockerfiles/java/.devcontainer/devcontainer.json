@@ -1,0 +1,36 @@
+{
+  "name": "Java",
+  "build": {
+    "dockerfile": "../Dockerfile.devcontainer",
+    "context": "..",
+    "args": {
+      "VARIANT": "1-21-bookworm"
+    }
+  },
+  "remoteUser": "vscode",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "redhat.java",
+        "vscjava.vscode-maven",
+        "vscjava.vscode-gradle",
+        "vscjava.vscode-java-test",
+        "vscjava.vscode-java-debug",
+        "vscjava.vscode-spring-initializr",
+        "vmware.vscode-spring-boot",
+        "usernamehw.errorlens"
+      ],
+      "settings": {
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "java.compile.nullAnalysis.mode": "automatic",
+        "editor.formatOnSave": true,
+        "[java]": {
+          "editor.defaultFormatter": "redhat.java"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "mvn dependency:go-offline -q 2>/dev/null || gradle dependencies -q 2>/dev/null || true"
+}
