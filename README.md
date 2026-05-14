@@ -18,7 +18,7 @@
 [![Hadolint](https://img.shields.io/badge/Hadolint-clean-success)](https://github.com/hadolint/hadolint)
 [![Prettier](https://img.shields.io/badge/Code_Style-Prettier-F7B93E?logo=prettier&logoColor=black)](https://prettier.io/)
 
-Reference [Dockerfiles](https://docs.docker.com/engine/reference/builder/) and best-practice guides for building **secure container images** that ship to production: small, signed, scanner-friendly, [OCI](https://opencontainers.org/)-compliant. [Python](https://www.python.org/), [Go](https://go.dev/), [JAX](https://jax.readthedocs.io/), [Node.js](https://nodejs.org/), and [TypeScript](https://www.typescriptlang.org/) are covered; [Rust](https://www.rust-lang.org/) is on the [roadmap](https://github.com/kssd/dockerfiles/issues).
+Reference [Dockerfiles](https://docs.docker.com/engine/reference/builder/) and best-practice guides for building **secure container images** that ship to production: small, signed, scanner-friendly, [OCI](https://opencontainers.org/)-compliant. [Python](https://www.python.org/), [Go](https://go.dev/), [JAX](https://jax.readthedocs.io/), [Node.js](https://nodejs.org/), [TypeScript](https://www.typescriptlang.org/), and [Rust](https://www.rust-lang.org/) are covered.
 
 ## Why these templates
 
@@ -125,11 +125,20 @@ Multi-stage [TypeScript](https://www.typescriptlang.org/) images: a dedicated de
 
 Full documentation: [`dockerfiles/typescript/README.md`](dockerfiles/typescript/README.md).
 
+### Rust — cargo-chef dep caching + Distroless cc
+
+Multi-stage [Rust](https://www.rust-lang.org/) images using [cargo-chef](https://github.com/LukeMathWalker/cargo-chef) to cache the dependency-compile layer separately from application source. Ships in [**Google Distroless cc**](https://github.com/GoogleContainerTools/distroless) — glibc and libstdc++ only, no shell, no package manager.
+
+- Distroless production image (GNU) → [`dockerfiles/rust/Dockerfile.rust`](dockerfiles/rust/Dockerfile.rust)
+- Chainguard production image → [`dockerfiles/rust/Dockerfile.rust.chainguard`](dockerfiles/rust/Dockerfile.rust.chainguard)
+- VS Code devcontainer (Rust + cargo-edit + cargo-watch + cargo-nextest) → [`dockerfiles/rust/Dockerfile.devcontainer`](dockerfiles/rust/Dockerfile.devcontainer)
+
+Full documentation: [`dockerfiles/rust/README.md`](dockerfiles/rust/README.md).
+
 ### Coming soon
 
 Tracked as issues — comment or 👍 to bump priority.
 
-- [Rust Dockerfile templates](https://github.com/kssd/dockerfiles/issues/8) _(planned)_
 - [Zig Dockerfile templates](https://github.com/kssd/dockerfiles/issues/11) _(planned)_
 
 ## Guides

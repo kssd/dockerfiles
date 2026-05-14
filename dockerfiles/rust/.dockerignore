@@ -1,0 +1,28 @@
+# Build output — can be multiple GB; always exclude
+target/
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Devcontainer
+.devcontainer/
+
+# Credentials and secrets
+.env
+*.pem
+*.key
+*.cert
+
+# CI
+.github/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+LICENSE
