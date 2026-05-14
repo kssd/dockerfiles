@@ -18,7 +18,7 @@
 [![Hadolint](https://img.shields.io/badge/Hadolint-clean-success)](https://github.com/hadolint/hadolint)
 [![Prettier](https://img.shields.io/badge/Code_Style-Prettier-F7B93E?logo=prettier&logoColor=black)](https://prettier.io/)
 
-Reference [Dockerfiles](https://docs.docker.com/engine/reference/builder/) and best-practice guides for building **secure container images** that ship to production: small, signed, scanner-friendly, [OCI](https://opencontainers.org/)-compliant. [Python](https://www.python.org/) is the first ecosystem covered; [Node.js](https://nodejs.org/), [TypeScript](https://www.typescriptlang.org/), [Go](https://go.dev/), [Rust](https://www.rust-lang.org/), and [JAX](https://jax.readthedocs.io/) are on the [roadmap](https://github.com/kssd/dockerfiles/issues).
+Reference [Dockerfiles](https://docs.docker.com/engine/reference/builder/) and best-practice guides for building **secure container images** that ship to production: small, signed, scanner-friendly, [OCI](https://opencontainers.org/)-compliant. [Python](https://www.python.org/), [Go](https://go.dev/), and [JAX](https://jax.readthedocs.io/) are covered; [Node.js](https://nodejs.org/), [TypeScript](https://www.typescriptlang.org/), and [Rust](https://www.rust-lang.org/) are on the [roadmap](https://github.com/kssd/dockerfiles/issues).
 
 ## Why these templates
 
@@ -93,6 +93,16 @@ Fully-static Go binaries (`CGO_ENABLED=0`) built with the official `golang:*-boo
 
 Full documentation: [`dockerfiles/go/README.md`](dockerfiles/go/README.md).
 
+### JAX — CPU and GPU workloads
+
+Secure [JAX](https://jax.readthedocs.io/) Docker images for CPU inference and GPU training. The CPU variant uses Google Distroless; the GPU variant uses `python:3.12-slim` with `jax[cuda12]` wheels that **bundle the CUDA runtime** — no `nvidia/cuda` base image required. Both variants are non-root and hadolint-clean.
+
+- CPU (distroless, `linux/amd64` + `linux/arm64`) → [`dockerfiles/jax/Dockerfile.jax.cpu`](dockerfiles/jax/Dockerfile.jax.cpu)
+- GPU / CUDA 12 (`linux/amd64`, bundled CUDA via `jax[cuda12]`) → [`dockerfiles/jax/Dockerfile.jax.cuda`](dockerfiles/jax/Dockerfile.jax.cuda)
+- VS Code devcontainer (JAX CPU + JupyterLab + ruff + mypy + pytest) → [`dockerfiles/jax/Dockerfile.devcontainer`](dockerfiles/jax/Dockerfile.devcontainer)
+
+Full documentation: [`dockerfiles/jax/README.md`](dockerfiles/jax/README.md).
+
 ### Coming soon
 
 Tracked as issues — comment or 👍 to bump priority.
@@ -100,7 +110,6 @@ Tracked as issues — comment or 👍 to bump priority.
 - [Node.js Dockerfile templates](https://github.com/kssd/dockerfiles/issues/6) _(planned)_
 - [TypeScript Dockerfile templates](https://github.com/kssd/dockerfiles/issues/9) _(planned)_
 - [Rust Dockerfile templates](https://github.com/kssd/dockerfiles/issues/8) _(planned)_
-- [JAX Dockerfile templates](https://github.com/kssd/dockerfiles/issues/5) _(planned)_
 - [Zig Dockerfile templates](https://github.com/kssd/dockerfiles/issues/11) _(planned)_
 
 ## Guides

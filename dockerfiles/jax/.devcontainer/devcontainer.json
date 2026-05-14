@@ -1,0 +1,45 @@
+{
+  "name": "JAX",
+  "dockerFile": "../Dockerfile.devcontainer",
+  "context": "..",
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
+  "mounts": [
+    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached,readonly"
+  ],
+  "forwardPorts": [8888],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.pylance",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.vscode-jupyter-cell-tags",
+        "eamodio.gitlens",
+        "ms-azuretools.vscode-docker",
+        "EditorConfig.EditorConfig",
+        "esbenp.prettier-vscode",
+        "tamasfe.even-better-toml"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/python/current/bin/python",
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.fixAll": "always",
+            "source.organizeImports": "always"
+          }
+        },
+        "ruff.enable": true,
+        "mypy-type-checker.importStrategy": "useBundled",
+        "jupyter.notebookFileRoot": "${workspaceFolder}"
+      }
+    }
+  },
+  "postCreateCommand": "[ -f pyproject.toml ] && pip install --user -e '.[dev]' || true"
+}

@@ -1,0 +1,85 @@
+# JAX CUDA image (jax[cuda12] + python:slim runtime, multi-stage).
+#
+# jax[cuda12] on PyPI ships self-contained manylinux wheels that bundle the
+# XLA compiler, CUDA 12.x runtime, and cuDNN libraries. No nvidia/cuda base
+# image is required: the CUDA runtime is embedded in the jaxlib wheel itself.
+# The host only needs the NVIDIA Container Runtime and a CUDA 12-compatible
+# driver (≥ 525.85.12 / CUDA 12.0).
+#
+# Why python:slim runtime instead of distroless:
+#   jaxlib's bundled CUDA .so files are loaded at process startup via
+#   Python's ctypes/CFFI. The distroless python3 image omits libstdc++
+#   and several glibc symbols required by XLA's GPU backend, causing
+#   import-time failures. python:slim is still minimal (no compiler, no
+#   apt, no curl) — just a libc-complete environment.
+#
+# CUDA arm64 availability:
+#   jax[cuda12] wheels are only published for linux/amd64. Build and run
+#   this image with --platform=linux/amd64.
+#
+# CUDA driver version ↔ CUDA runtime compatibility:
+#   The bundled CUDA 12 runtime requires a host driver that supports CUDA 12.
+#   Minimum driver: 525.85.12 (Linux). Check your driver:
+#     nvidia-smi --query-gpu=driver_version --format=csv,noheader
+#
+# Expected build context:
+#   ./requirements.txt - project dependencies (may be empty; jax[cuda12] is
+#                        installed separately via JAX_VERSION ARG)
+#   ./main.py          - default entry point (override CMD to change)
+#
+# Build (amd64 only):
+#   docker build --platform=linux/amd64 \
+#       --build-arg JAX_VERSION=0.10.0 \
+#       -t myapp -f Dockerfile.jax.cuda .
+#
+# Run with GPU access:
+#   docker run --rm \
+#     --gpus all \
+#     --ipc=host \
+#     --ulimit memlock=-1 \
+#     --read-only \
+#     --cap-drop=ALL \
+#     --security-opt=no-new-privileges \
+#     myapp
+#
+# GPU selection (subset of GPUs):
+#   docker run --gpus '"device=0,1"' myapp
+#
+# Verify JAX sees the GPU inside the container:
+#   docker run --rm --gpus all myapp python3 -c \
+#       "import jax; print(jax.devices())"
+ARG BASE_TAG=3.12-slim
+ARG JAX_VERSION=0.10.0
+
+FROM python:${BASE_TAG} AS builder
+ARG JAX_VERSION
+WORKDIR /app
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --target=/app/deps \
+        "jax[cuda12]==${JAX_VERSION}" \
+    && pip install --no-cache-dir --target=/app/deps \
+        -r requirements.txt
+
+COPY . /app/src
+
+FROM python:${BASE_TAG}
+WORKDIR /app
+
+RUN groupadd --gid 10001 jax \
+    && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin jax
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/deps:/app/src \
+    CUDA_VISIBLE_DEVICES=all \
+    XLA_FLAGS="--xla_gpu_cuda_data_dir=/usr/local"
+
+COPY --from=builder --chown=jax:jax /app/deps /app/deps
+COPY --from=builder --chown=jax:jax /app/src /app/src
+
+USER jax
+
+CMD ["python3", "/app/src/main.py"]

@@ -1,0 +1,91 @@
+# JAX devcontainer image for VS Code Remote-Containers / Dev Containers.
+#
+# Based on the official Microsoft Python devcontainer base image, which ships
+# Python 3.12, pip, pipx, git, curl, jq, make, a non-root `vscode` user
+# (UID 1000), and common dev utilities. Installs JAX (CPU variant) and a
+# JupyterLab environment for interactive development.
+#
+# Why JAX CPU in the devcontainer:
+#   Most developer machines do not have an NVIDIA GPU. The CPU variant runs
+#   everywhere and supports the full JAX API — all transformations (jit, grad,
+#   vmap, pmap) work on CPU. Switch the jax[cpu] pin to jax[cuda12] if your
+#   dev machine has a GPU and the NVIDIA Container Runtime installed.
+#
+# Pinned to a minor version tag (1-3.12-bookworm), not :latest, so builds
+# are reproducible and PR reviews can see version bumps.
+#
+# Extra tools installed here:
+#   - build-essential  — native extension compilation (h5py, numba, etc.)
+#   - direnv           — per-directory environment variables (.envrc)
+#   - gh               — GitHub CLI for PR / issue workflows
+#   - ruff             — linter and formatter
+#   - black            — formatter (for projects that use Black)
+#   - mypy             — static type checker
+#   - pytest           — test runner
+#   - ipython          — interactive Python REPL
+#   - debugpy          — VS Code Python debugger adapter
+#   - jupyterlab       — browser-based notebook environment
+#   - ipykernel        — Jupyter kernel for the Python interpreter
+#   - jax[cpu]         — JAX with CPU backend (all transforms available)
+#   - numpy            — array foundation (bundled by jax; explicit pin)
+#   - matplotlib       — visualisation
+#
+# All extra tools are pinned to explicit versions.
+#
+# The base image pre-installs black, mypy, and pytest as root into
+# /usr/local/py-utils. Those are re-pinned here as root (before USER vscode)
+# so our ARG versions win over future base-image bumps. ruff and ipython are
+# installed as vscode via pipx. JAX, JupyterLab, and the scientific stack are
+# installed into the vscode user's pip environment so they are importable from
+# project notebooks and scripts without a separate venv.
+#
+# Build:
+#   docker build -t jax-dev -f Dockerfile.devcontainer .
+#   (normally invoked automatically by VS Code "Reopen in Container")
+ARG DEVCONTAINER_TAG=1-3.12-bookworm
+
+FROM mcr.microsoft.com/devcontainers/python:${DEVCONTAINER_TAG}
+
+ARG RUFF_VERSION=0.11.12
+ARG BLACK_VERSION=25.1.0
+ARG MYPY_VERSION=1.16.1
+ARG PYTEST_VERSION=8.4.1
+ARG IPYTHON_VERSION=8.34.0
+ARG DEBUGPY_VERSION=1.8.14
+ARG JUPYTERLAB_VERSION=4.4.2
+ARG IPYKERNEL_VERSION=6.29.5
+ARG JAX_VERSION=0.10.0
+ARG NUMPY_VERSION=2.2.5
+ARG MATPLOTLIB_VERSION=3.10.3
+
+# hadolint ignore=DL3008
+RUN rm -f /etc/apt/sources.list.d/yarn.list \
+    && apt-get update && apt-get install --no-install-recommends -y \
+        build-essential \
+        direnv \
+        gh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Re-pin tools the base pre-installs as root.
+RUN pipx install --force "black==${BLACK_VERSION}" \
+    && pipx install --force "mypy==${MYPY_VERSION}" \
+    && pipx install --force "pytest==${PYTEST_VERSION}"
+
+USER vscode
+
+ENV PATH="/home/vscode/.local/bin:${PATH}"
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN pipx install "ruff==${RUFF_VERSION}" \
+    && pipx install "ipython==${IPYTHON_VERSION}"
+
+# Install JAX and the scientific stack directly into the vscode user's site-packages
+# so they are available in both notebooks and the interactive REPL.
+RUN pip install --user --no-cache-dir \
+        "jax[cpu]==${JAX_VERSION}" \
+        "numpy==${NUMPY_VERSION}" \
+        "matplotlib==${MATPLOTLIB_VERSION}" \
+        "jupyterlab==${JUPYTERLAB_VERSION}" \
+        "ipykernel==${IPYKERNEL_VERSION}" \
+        "debugpy==${DEBUGPY_VERSION}"

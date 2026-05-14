@@ -1,0 +1,47 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# JAX / ML artefacts
+*.npy
+*.npz
+*.pkl
+*.h5
+*.hdf5
+checkpoints/
+wandb/
+.cache/
+jax_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Test / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Editor / VCS
+.git/
+.gitignore
+*.md
+.DS_Store
+.env
+.envrc

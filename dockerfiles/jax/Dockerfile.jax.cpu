@@ -1,0 +1,66 @@
+# JAX CPU image (pip + Google Distroless, multi-stage).
+#
+# Installs JAX with CPU-only wheels (jax[cpu]) and ships in
+# gcr.io/distroless/python3-debian12:nonroot — no shell, no package manager,
+# no compilers at runtime.
+#
+# Multi-arch:
+#   jax[cpu] publishes manylinux wheels for both linux/amd64 and linux/arm64.
+#   Build for either platform without changes to this file:
+#     docker build --platform=linux/amd64 -t myapp -f Dockerfile.jax.cpu .
+#     docker build --platform=linux/arm64 -t myapp -f Dockerfile.jax.cpu .
+#
+# Layer-cache optimisation:
+#   requirements.txt is copied and installed before source, so a code-only
+#   change does not invalidate the JAX install layer.
+#
+# Dependencies are installed with `pip install --target` instead of a venv.
+# A venv embeds absolute-path shebangs pointing at the builder's Python;
+# those become invalid in distroless. --target produces a plain
+# site-packages tree exposed via PYTHONPATH.
+#
+# Expected build context:
+#   ./requirements.txt - project dependencies (may be empty; jax[cpu] is
+#                        installed separately via JAX_VERSION ARG)
+#   ./main.py          - default entry point (override CMD to change)
+#
+# Build:
+#   docker build --build-arg JAX_VERSION=0.10.0 \
+#       -t myapp -f Dockerfile.jax.cpu .
+#
+# Run (hardened):
+#   docker run --rm \
+#     --read-only \
+#     --cap-drop=ALL \
+#     --security-opt=no-new-privileges \
+#     myapp
+ARG BASE_TAG=3.12-slim
+ARG DISTROLESS_TAG=debian12
+ARG JAX_VERSION=0.10.0
+
+FROM python:${BASE_TAG} AS builder
+ARG JAX_VERSION
+WORKDIR /app
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --target=/app/deps \
+        "jax[cpu]==${JAX_VERSION}" \
+    && pip install --no-cache-dir --target=/app/deps \
+        -r requirements.txt
+
+COPY . /app/src
+
+FROM gcr.io/distroless/python3-${DISTROLESS_TAG}:nonroot
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/deps:/app/src
+
+COPY --from=builder --chown=nonroot:nonroot /app/deps /app/deps
+COPY --from=builder --chown=nonroot:nonroot /app/src /app/src
+
+USER nonroot
+
+CMD ["/app/src/main.py"]
