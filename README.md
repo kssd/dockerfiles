@@ -18,7 +18,7 @@
 [![Hadolint](https://img.shields.io/badge/Hadolint-clean-success)](https://github.com/hadolint/hadolint)
 [![Prettier](https://img.shields.io/badge/Code_Style-Prettier-F7B93E?logo=prettier&logoColor=black)](https://prettier.io/)
 
-Reference [Dockerfiles](https://docs.docker.com/engine/reference/builder/) and best-practice guides for building **secure container images** that ship to production: small, signed, scanner-friendly, [OCI](https://opencontainers.org/)-compliant. [Python](https://www.python.org/), [Go](https://go.dev/), [JAX](https://jax.readthedocs.io/), [Node.js](https://nodejs.org/), [TypeScript](https://www.typescriptlang.org/), and [Rust](https://www.rust-lang.org/) are covered.
+Reference [Dockerfiles](https://docs.docker.com/engine/reference/builder/) and best-practice guides for building **secure container images** that ship to production: small, signed, scanner-friendly, [OCI](https://opencontainers.org/)-compliant. [Python](https://www.python.org/), [Go](https://go.dev/), [JAX](https://jax.readthedocs.io/), [Node.js](https://nodejs.org/), [TypeScript](https://www.typescriptlang.org/), [Rust](https://www.rust-lang.org/), and [Java](https://openjdk.org/) are covered.
 
 ## Why these templates
 
@@ -134,6 +134,18 @@ Multi-stage [Rust](https://www.rust-lang.org/) images using [cargo-chef](https:/
 - VS Code devcontainer (Rust + cargo-edit + cargo-watch + cargo-nextest) → [`dockerfiles/rust/Dockerfile.devcontainer`](dockerfiles/rust/Dockerfile.devcontainer)
 
 Full documentation: [`dockerfiles/rust/README.md`](dockerfiles/rust/README.md).
+
+### Java — Maven/Gradle dep caching + Distroless JRE
+
+Multi-stage [Java](https://openjdk.org/) images supporting both Maven and Gradle via `--build-arg BUILD_TOOL`. Deps are cached in a dedicated layer before source is copied. Ships in [**Google Distroless java21**](https://github.com/GoogleContainerTools/distroless/blob/main/java/README.md) — JRE only, no shell, no package manager. Includes a GraalVM Native Image variant for fast cold starts.
+
+- Distroless JVM image (Maven/Gradle) → [`dockerfiles/java/Dockerfile.java`](dockerfiles/java/Dockerfile.java)
+- GraalVM Native Image → [`dockerfiles/java/Dockerfile.java.native`](dockerfiles/java/Dockerfile.java.native)
+- Chainguard production image → [`dockerfiles/java/Dockerfile.java.chainguard`](dockerfiles/java/Dockerfile.java.chainguard)
+- AWS Lambda container image → [`dockerfiles/java/Dockerfile.lambda`](dockerfiles/java/Dockerfile.lambda)
+- VS Code devcontainer (Java 21 + Maven + Gradle) → [`dockerfiles/java/Dockerfile.devcontainer`](dockerfiles/java/Dockerfile.devcontainer)
+
+Full documentation: [`dockerfiles/java/README.md`](dockerfiles/java/README.md).
 
 ### Coming soon
 

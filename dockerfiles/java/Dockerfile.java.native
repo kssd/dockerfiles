@@ -1,0 +1,49 @@
+# Java GraalVM Native Image (native-image-community + Distroless cc, multi-stage).
+#
+# Compiles a Java application to a native binary via GraalVM Native Image.
+# The resulting binary starts in milliseconds (no JVM warm-up) and uses a
+# fraction of the heap compared to the JVM variant.
+#
+# Trade-offs vs. the JVM variant (Dockerfile.java):
+#   + Cold start: ~10ms vs. 100-500ms for a typical Spring Boot app.
+#   + Memory: native binary uses 2-5x less heap at steady state.
+#   - Build time: native-image compilation takes minutes (vs. seconds for javac).
+#   - Reflection: dynamic reflection, JNI, and serialization require AOT
+#     configuration (reflect-config.json). Spring Boot 3 Native handles this
+#     automatically via the GraalVM reachability metadata.
+#   - Build platform: the native binary targets the build host OS/arch; cross-
+#     compilation requires separate builds per platform.
+#
+# Runtime: gcr.io/distroless/cc-debian12:nonroot — includes glibc and
+# libstdc++ for a dynamically-linked native binary. For a fully-static binary
+# (requires musl toolchain; see README.md), switch to distroless/static.
+#
+# APP_NAME must match the artifact ID / binary name produced by native-image.
+#
+# Build:
+#   docker build --build-arg APP_NAME=myapp -t myapp -f Dockerfile.java.native .
+#
+# Run:
+#   docker run --rm \
+#     --read-only \
+#     --cap-drop=ALL \
+#     --security-opt=no-new-privileges \
+#     myapp
+ARG GRAALVM_TAG=21-ol9
+ARG DISTROLESS_TAG=debian12
+
+FROM ghcr.io/graalvm/native-image-community:${GRAALVM_TAG} AS builder
+ARG APP_NAME=app
+WORKDIR /app
+COPY pom.xml ./
+RUN mvn dependency:go-offline -q
+COPY src ./src
+RUN mvn -Pnative native:compile -DskipTests -q && \
+    cp "target/${APP_NAME}" /native-binary
+
+FROM gcr.io/distroless/cc-${DISTROLESS_TAG}:nonroot
+COPY --from=builder --chown=nonroot:nonroot /native-binary /app/server
+
+USER nonroot
+
+ENTRYPOINT ["/app/server"]

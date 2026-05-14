@@ -1,0 +1,33 @@
+# Java devcontainer image (Microsoft devcontainers/java base).
+#
+# Extends the official VS Code Java devcontainer with additional tooling:
+#   - Gradle (pinned) for projects not using the Gradle wrapper
+#   - jq and curl for JSON processing and HTTP requests
+#
+# The base image ships: Java JDK, Maven, git, common dev utilities, and
+# the VS Code remote-containers server.
+#
+# Build context: dockerfiles/java/
+#   docker build -f Dockerfile.devcontainer .
+#
+# Typical usage: open in VS Code with the Dev Containers extension;
+# the .devcontainer/devcontainer.json references this file.
+ARG VARIANT=1-21-bookworm
+
+FROM mcr.microsoft.com/devcontainers/java:${VARIANT}
+
+USER root
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        jq=1.6-2.1 \
+        curl=7.88.1-10+deb12u12 \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG GRADLE_VERSION=8.11
+RUN curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+        -o /tmp/gradle.zip && \
+    unzip -q /tmp/gradle.zip -d /opt && \
+    ln -s "/opt/gradle-${GRADLE_VERSION}/bin/gradle" /usr/local/bin/gradle && \
+    rm /tmp/gradle.zip
+
+USER vscode
