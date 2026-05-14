@@ -16,6 +16,8 @@ Chainguard publishes a CUDA-enabled image, but GPU-capable Chainguard images are
 
 JAX is strict about CUDA compatibility. The CUDA variant uses `jax[cuda12]`, which pulls self-contained PyPI wheels that **bundle the CUDA 12 runtime, XLA, and cuDNN** — no `nvidia/cuda` base image is required. The only host requirement is a CUDA 12-compatible NVIDIA driver.
 
+The CUDA minor version is pinned by the jaxlib wheel rather than by a base image tag. `jax[cuda12]==0.10.0` ships a specific jaxlib build against a specific CUDA 12.x minor; pinning `JAX_VERSION` therefore transitively pins the CUDA minor. To verify the exact CUDA minor bundled: `pip show jaxlib` inside a running container and check the wheel filename in `pip cache list`.
+
 | Component                | Requirement                         |
 | ------------------------ | ----------------------------------- |
 | JAX wheel                | `jax[cuda12]==0.10.0` (PyPI)        |
@@ -157,6 +159,7 @@ docker run --rm \
 | `matplotlib`      | 3.10.3  | Visualisation                        |
 | `jupyterlab`      | 4.4.2   | Browser-based notebook environment   |
 | `ipykernel`       | 6.29.5  | Jupyter kernel                       |
+| `uv`              | 0.6.14  | Fast package manager and venv runner |
 | `ruff`            | 0.11.12 | Linter and formatter                 |
 | `black`           | 25.1.0  | Formatter (for projects using Black) |
 | `mypy`            | 1.16.1  | Static type checker                  |
@@ -181,7 +184,7 @@ docker run --rm \
 
 ### Using the GPU devcontainer
 
-To develop with GPU access, change `jax[cpu]` to `jax[cuda12]` in the `Dockerfile.devcontainer` `ARG` and rebuild. Also add the `--gpus all` runtime argument in `devcontainer.json`:
+To develop with GPU access, change `jax[cpu]` to `jax[cuda12]` in the `pip install` line in `Dockerfile.devcontainer` and rebuild. Also add the `--gpus all` runtime argument in `devcontainer.json`:
 
 ```json
 "runArgs": ["--gpus", "all", "--ipc=host"]

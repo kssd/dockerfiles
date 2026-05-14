@@ -41,5 +41,5 @@
       }
     }
   },
-  "postCreateCommand": "[ -f pyproject.toml ] && pip install --user -e '.[dev]' || true"
+  "postCreateCommand": "[ -f pyproject.toml ] && uv sync || true"
 }

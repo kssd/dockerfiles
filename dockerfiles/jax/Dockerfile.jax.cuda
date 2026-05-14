@@ -73,9 +73,7 @@ RUN groupadd --gid 10001 jax \
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/deps:/app/src \
-    CUDA_VISIBLE_DEVICES=all \
-    XLA_FLAGS="--xla_gpu_cuda_data_dir=/usr/local"
+    PYTHONPATH=/app/deps:/app/src
 
 COPY --from=builder --chown=jax:jax /app/deps /app/deps
 COPY --from=builder --chown=jax:jax /app/src /app/src
