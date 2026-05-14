@@ -1,0 +1,86 @@
+# Build-context exclusions for the Node.js Dockerfile templates.
+#
+# IMPORTANT: keep node_modules excluded — the builder stages install fresh
+# dependencies inside the image; a host node_modules/ copied through
+# `COPY . .` would override them with platform-specific binaries.
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Node.js dependencies
+node_modules/
+.pnpm-store/
+.yarn/cache/
+.yarn/install-state.gz
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.svelte-kit/
+
+# Test / coverage
+coverage/
+.nyc_output/
+*.test.js.snap
+junit.xml
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Cache
+.cache/
+.turbo/
+.eslintcache
+.parcel-cache/
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker / CI
+Dockerfile*
+.dockerignore
+.github/
+.gitlab-ci.yml
+
+# Docs / misc
+*.md
+LICENSE
+docs/
+tests/
+__tests__/
+*.spec.js
+*.test.js
+
+# Environment / secrets (defense in depth — these should not be in the
+# build context in the first place, but exclude them in case they are).
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+.aws/
+.kube/
+.ssh/
+secrets/
+credentials
+credentials.*
+
+# Locals
+*.local
+*.local.*

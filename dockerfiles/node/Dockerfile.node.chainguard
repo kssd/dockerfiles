@@ -1,0 +1,37 @@
+# Node.js application image (Chainguard variant).
+#
+# Builder: cgr.dev/chainguard/node:latest-dev (includes npm, shell, git).
+# Runtime: cgr.dev/chainguard/node:latest (minimal, daily CVE patches,
+# signed and attested images).
+#
+# Chainguard free-tier constraint: versioned tags (e.g. :22) are paywalled.
+# Free Developer Edition publishes :latest and :latest-dev only. Pin by
+# digest for reproducibility:
+#   docker pull cgr.dev/chainguard/node:latest
+#   docker inspect --format='{{index .RepoDigests 0}}' cgr.dev/chainguard/node:latest
+#   # Then: FROM cgr.dev/chainguard/node:latest@sha256:<digest>
+#
+# The runtime image ENTRYPOINT is the node binary; CMD is the script path only.
+#
+# Build:
+#   docker build -t myapp -f Dockerfile.node.chainguard .
+ARG BASE_TAG=latest
+
+FROM cgr.dev/chainguard/node:${BASE_TAG}-dev AS builder
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY . .
+
+FROM cgr.dev/chainguard/node:${BASE_TAG}
+WORKDIR /app
+
+COPY --from=builder --chown=node:node /app/node_modules /app/node_modules
+COPY --from=builder --chown=node:node /app/src /app/src
+
+USER node
+
+CMD ["/app/src/index.js"]

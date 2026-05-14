@@ -1,0 +1,71 @@
+# Node.js execution sandbox for agent-generated code.
+#
+# A tool-rich, non-root environment where an LLM agent can execute Node.js
+# code it just wrote. Complementary to the minimal production images in this
+# directory — this is the "fat toolbox" half of the agentic pattern.
+#
+# Design rules:
+#   - Runs as a non-root user (`agent`, UID 10001).
+#   - Workdir is /workspace. The expected invocation mounts a tmpfs there
+#     (`--tmpfs /workspace:...,uid=10001`) and runs the rest of the rootfs
+#     read-only (`--read-only`).
+#   - tini reaps zombie subprocesses spawned by the agent's code.
+#   - No network by default at run time (`--network none`). Add a tightly
+#     scoped network only when the task genuinely needs egress.
+#   - pnpm and tsx are included for projects that use them.
+#
+# Base-image immutability:
+#   `node:22-slim` is a floating tag. For production sandbox use, resolve
+#   it to a digest and pin in the FROM line:
+#     docker pull node:22-slim
+#     docker inspect --format='{{index .RepoDigests 0}}' node:22-slim
+#     # then: FROM node@sha256:<digest>
+#   Refresh the digest deliberately (e.g. weekly) and re-scan.
+#
+# Recommended invocation (host side):
+#   docker run --rm -it \
+#     --read-only \
+#     --tmpfs /workspace:rw,exec,size=256m,uid=10001,gid=10001 \
+#     --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+#     --network none \
+#     --cap-drop=ALL \
+#     --security-opt=no-new-privileges \
+#     --memory=512m --cpus=1 \
+#     --pids-limit=256 \
+#     node-sandbox
+#
+# Build:
+#   docker build --build-arg NODE_TAG=22-slim -t node-sandbox -f Dockerfile.sandbox .
+ARG NODE_TAG=22-slim
+
+FROM node:${NODE_TAG}
+
+# hadolint ignore=DL3008
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+        ca-certificates \
+        curl \
+        git \
+        jq \
+        tini && \
+    rm -rf /var/lib/apt/lists/*
+
+# Global CLI tools available to agent-generated code.
+RUN npm install -g --no-fund \
+        pnpm@9.15.4 \
+        tsx@4.19.3
+
+RUN groupadd --system --gid 10001 agent && \
+    useradd --system --uid 10001 --gid agent \
+        --home /home/agent --create-home --shell /bin/bash agent
+
+WORKDIR /workspace
+RUN chown agent:agent /workspace
+
+ENV NODE_ENV=development \
+    HOME=/home/agent
+
+USER agent
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["node"]

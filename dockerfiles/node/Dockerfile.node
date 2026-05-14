@@ -1,0 +1,43 @@
+# Node.js application image (npm + Google Distroless, multi-stage).
+#
+# Builder: node:22-slim (npm, Node.js, shell).
+# Runtime: gcr.io/distroless/nodejs22-debian12:nonroot — contains only
+# Node.js and its runtime dependencies. No shell, no npm, no package manager.
+#
+# IMPORTANT: the distroless nodejs image sets ENTRYPOINT to the Node.js
+# binary (/nodejs/bin/node). CMD must be the script path only — do NOT
+# include "node" as the first CMD element.
+#
+# Only production dependencies reach the runtime stage (npm ci --omit=dev).
+#
+# Expected build context:
+#   ./package.json / package-lock.json — dependency manifest
+#   ./src/index.js                     — default entry point
+#
+# Build:
+#   docker build --build-arg NODE_TAG=22-slim -t myapp -f Dockerfile.node .
+#
+# Run:
+#   docker run --rm myapp
+ARG NODE_TAG=22-slim
+ARG DISTROLESS_TAG=debian12
+
+FROM node:${NODE_TAG} AS builder
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY . .
+
+FROM gcr.io/distroless/nodejs22-${DISTROLESS_TAG}:nonroot
+WORKDIR /app
+
+COPY --from=builder --chown=nonroot:nonroot /app/node_modules /app/node_modules
+COPY --from=builder --chown=nonroot:nonroot /app/src /app/src
+
+USER nonroot
+
+# ENTRYPOINT is /nodejs/bin/node — CMD is the script path only.
+CMD ["/app/src/index.js"]
