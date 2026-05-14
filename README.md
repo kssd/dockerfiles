@@ -18,7 +18,7 @@
 [![Hadolint](https://img.shields.io/badge/Hadolint-clean-success)](https://github.com/hadolint/hadolint)
 [![Prettier](https://img.shields.io/badge/Code_Style-Prettier-F7B93E?logo=prettier&logoColor=black)](https://prettier.io/)
 
-Reference [Dockerfiles](https://docs.docker.com/engine/reference/builder/) and best-practice guides for building **secure container images** that ship to production: small, signed, scanner-friendly, [OCI](https://opencontainers.org/)-compliant. [Python](https://www.python.org/), [Go](https://go.dev/), [JAX](https://jax.readthedocs.io/), [Node.js](https://nodejs.org/), [TypeScript](https://www.typescriptlang.org/), [Rust](https://www.rust-lang.org/), and [Java](https://openjdk.org/) are covered.
+Reference [Dockerfiles](https://docs.docker.com/engine/reference/builder/) and best-practice guides for building **secure container images** that ship to production: small, signed, scanner-friendly, [OCI](https://opencontainers.org/)-compliant. [Python](https://www.python.org/), [Go](https://go.dev/), [JAX](https://jax.readthedocs.io/), [Node.js](https://nodejs.org/), [TypeScript](https://www.typescriptlang.org/), [Rust](https://www.rust-lang.org/), [Java](https://openjdk.org/), and [Zig](https://ziglang.org/) are covered.
 
 ## Why these templates
 
@@ -147,11 +147,21 @@ Multi-stage [Java](https://openjdk.org/) images supporting both Maven and Gradle
 
 Full documentation: [`dockerfiles/java/README.md`](dockerfiles/java/README.md).
 
+### Zig — tarball builder + Distroless static
+
+Multi-stage [Zig](https://ziglang.org/) images that download and SHA-256-verify the official Zig toolchain tarball before use. Produces fully-static binaries (musl libc bundled in the toolchain) that ship in [**Google Distroless static**](https://github.com/GoogleContainerTools/distroless) — the smallest possible runtime: no libc, no shell, no package manager.
+
+- Distroless static image → [`dockerfiles/zig/Dockerfile.zig`](dockerfiles/zig/Dockerfile.zig)
+- Chainguard static image → [`dockerfiles/zig/Dockerfile.zig.chainguard`](dockerfiles/zig/Dockerfile.zig.chainguard)
+- VS Code devcontainer (Zig + ZLS + gdb + lldb) → [`dockerfiles/zig/Dockerfile.devcontainer`](dockerfiles/zig/Dockerfile.devcontainer)
+
+Full documentation: [`dockerfiles/zig/README.md`](dockerfiles/zig/README.md).
+
 ### Coming soon
 
 Tracked as issues — comment or 👍 to bump priority.
 
-- [Zig Dockerfile templates](https://github.com/kssd/dockerfiles/issues/11) _(planned)_
+_All planned ecosystems are now available. Open an issue to request a new one._
 
 ## Guides
 

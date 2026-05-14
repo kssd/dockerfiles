@@ -1,0 +1,63 @@
+# Zig application image (tarball builder on Wolfi + Chainguard static, multi-stage).
+#
+# Chainguard sibling of Dockerfile.zig. Uses cgr.dev/chainguard/wolfi-base
+# as the builder (cgr.dev/chainguard/zig:latest is a paid tier) and ships
+# in cgr.dev/chainguard/static — daily-rebuilt, Sigstore-signed, with SLSA
+# provenance and SBOMs attached.
+#
+# Free vs. paid Chainguard tags:
+#   The free Developer Edition only publishes :latest. Versioned tags
+#   require a paid Chainguard subscription. For free-tier reproducibility,
+#   pin by digest instead of relying on :latest:
+#
+#     docker pull cgr.dev/chainguard/static:latest
+#     docker inspect --format='{{index .RepoDigests 0}}' cgr.dev/chainguard/static:latest
+#     # bake the digest into the FROM line:
+#     FROM cgr.dev/chainguard/static@sha256:<digest>
+#
+#   Refresh the digest deliberately (e.g. weekly) and re-scan.
+#
+# Build:
+#   docker build --build-arg BIN_NAME=myapp -t myapp -f Dockerfile.zig.chainguard .
+ARG ZIG_VERSION=0.16.0
+ARG BASE_TAG=latest
+
+FROM --platform=$BUILDPLATFORM cgr.dev/chainguard/wolfi-base:${BASE_TAG} AS builder
+ARG ZIG_VERSION
+ARG TARGETARCH
+ARG BIN_NAME=app
+ARG ZIG_OPTIMIZE=ReleaseSafe
+
+RUN apk add --no-cache curl=7.87.0-r0 xz=5.6.4-r2
+
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
+# Select tarball URL and SHA-256 by target architecture.
+RUN case "${TARGETARCH}" in \
+        amd64) \
+            ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" ; \
+            ZIG_SHA256="70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00" ;; \
+        arm64) \
+            ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-aarch64-linux-${ZIG_VERSION}.tar.xz" ; \
+            ZIG_SHA256="ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17" ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" && exit 1 ;; \
+    esac && \
+    curl -fsSL "${ZIG_URL}" -o /tmp/zig.tar.xz && \
+    echo "${ZIG_SHA256}  /tmp/zig.tar.xz" | sha256sum -c - && \
+    tar -xJf /tmp/zig.tar.xz -C /usr/local && \
+    ln -s "/usr/local/zig-"*"-linux-"*"-${ZIG_VERSION}/zig" /usr/local/bin/zig && \
+    rm /tmp/zig.tar.xz
+
+WORKDIR /src
+COPY build.zig build.zig.zon* ./
+RUN zig build --fetch || true
+COPY . .
+RUN zig build -Doptimize="${ZIG_OPTIMIZE}" && \
+    cp "zig-out/bin/${BIN_NAME}" /server
+
+FROM cgr.dev/chainguard/static:${BASE_TAG}
+COPY --from=builder /server /app/server
+
+USER nonroot
+
+ENTRYPOINT ["/app/server"]

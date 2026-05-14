@@ -1,0 +1,63 @@
+# Zig devcontainer image (Debian bookworm-slim + Zig + ZLS).
+#
+# Installs Zig and ZLS (Zig Language Server) from official tarballs, both
+# pinned by version and SHA-256. Versions must match: ZLS_VERSION = ZIG_VERSION.
+#
+# ZIG_VERSION / ZLS_VERSION:
+#   Update both together. Fetch new SHA-256 values from:
+#     https://ziglang.org/download/ (Zig)
+#     https://github.com/zigtools/zls/releases (ZLS)
+#
+# Non-root vscode user (UID 1000) from the base image.
+#
+# Build context: dockerfiles/zig/
+#   docker build -f Dockerfile.devcontainer .
+ARG VARIANT=bookworm
+ARG ZIG_VERSION=0.16.0
+ARG ZLS_VERSION=0.16.0
+
+FROM mcr.microsoft.com/devcontainers/base:1-${VARIANT}
+
+ARG ZIG_VERSION
+ARG ZLS_VERSION
+ARG TARGETARCH
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        xz-utils=5.4.1-0.2 \
+        gdb=13.1-3 \
+        lldb=1:14.0-55.7~deb12u1 \
+        valgrind=3.19.0-1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Zig
+RUN case "${TARGETARCH}" in \
+        amd64) \
+            ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" ; \
+            ZIG_SHA256="70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00" ;; \
+        arm64) \
+            ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-aarch64-linux-${ZIG_VERSION}.tar.xz" ; \
+            ZIG_SHA256="ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17" ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" && exit 1 ;; \
+    esac && \
+    curl -fsSL "${ZIG_URL}" -o /tmp/zig.tar.xz && \
+    echo "${ZIG_SHA256}  /tmp/zig.tar.xz" | sha256sum -c - && \
+    tar -xJf /tmp/zig.tar.xz -C /usr/local && \
+    ln -s "/usr/local/zig-"*"-linux-"*"-${ZIG_VERSION}/zig" /usr/local/bin/zig && \
+    rm /tmp/zig.tar.xz
+
+# Install ZLS (Zig Language Server)
+RUN case "${TARGETARCH}" in \
+        amd64) \
+            ZLS_URL="https://github.com/zigtools/zls/releases/download/${ZLS_VERSION}/zls-x86_64-linux.tar.xz" ;; \
+        arm64) \
+            ZLS_URL="https://github.com/zigtools/zls/releases/download/${ZLS_VERSION}/zls-aarch64-linux.tar.xz" ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" && exit 1 ;; \
+    esac && \
+    curl -fsSL "${ZLS_URL}" -o /tmp/zls.tar.xz && \
+    tar -xJf /tmp/zls.tar.xz -C /tmp && \
+    mv /tmp/zls /usr/local/bin/zls && \
+    chmod +x /usr/local/bin/zls && \
+    rm /tmp/zls.tar.xz
+
+USER vscode

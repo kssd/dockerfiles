@@ -1,0 +1,29 @@
+{
+  "name": "Zig",
+  "build": {
+    "dockerfile": "../Dockerfile.devcontainer",
+    "context": "..",
+    "args": {
+      "VARIANT": "bookworm",
+      "ZIG_VERSION": "0.16.0",
+      "ZLS_VERSION": "0.16.0"
+    }
+  },
+  "remoteUser": "vscode",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ziglang.vscode-zig", "vadimcn.vscode-lldb", "usernamehw.errorlens"],
+      "settings": {
+        "zig.zls.path": "/usr/local/bin/zls",
+        "zig.path": "/usr/local/bin/zig",
+        "editor.formatOnSave": true,
+        "[zig]": {
+          "editor.defaultFormatter": "ziglang.vscode-zig"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "zig version && zls --version"
+}
