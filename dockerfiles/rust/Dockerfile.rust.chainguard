@@ -1,0 +1,53 @@
+# Rust application image (cargo-chef + Chainguard glibc-dynamic, multi-stage).
+#
+# Chainguard sibling of Dockerfile.rust. Builds with cgr.dev/chainguard/rust
+# and ships in cgr.dev/chainguard/glibc-dynamic — daily-rebuilt, Sigstore-
+# signed, with SLSA provenance and SBOMs attached.
+#
+# Free vs. paid Chainguard tags:
+#   The free Developer Edition only publishes :latest. Versioned tags
+#   require a paid Chainguard subscription. For free-tier reproducibility,
+#   pin by digest instead of relying on :latest:
+#
+#     docker pull cgr.dev/chainguard/rust:latest
+#     docker inspect --format='{{index .RepoDigests 0}}' cgr.dev/chainguard/rust:latest
+#     # bake the digest into the FROM line:
+#     FROM cgr.dev/chainguard/rust@sha256:<digest> AS chef
+#
+#   Refresh the digest deliberately (e.g. weekly) and re-scan.
+#
+# cargo-chef stages:
+#   chef    — installs cargo-chef; shared base for the next two stages.
+#   planner — runs `cargo chef prepare` to extract dependency metadata.
+#   builder — cooks deps first (cacheable), then compiles the binary.
+#
+# BIN_NAME:
+#   Set --build-arg BIN_NAME=<your_binary_name> (default: app).
+#
+# Build (free tier — pin by digest in production):
+#   docker build --build-arg BIN_NAME=mybin -t myapp -f Dockerfile.rust.chainguard .
+ARG BASE_TAG=latest
+
+FROM cgr.dev/chainguard/rust:${BASE_TAG} AS chef
+ENV PATH="/home/nonroot/.cargo/bin:${PATH}"
+RUN cargo install cargo-chef --version 0.1.77 --locked
+WORKDIR /app
+
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
+ARG BIN_NAME=app
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+COPY . .
+RUN cargo build --release --bin "${BIN_NAME}" && \
+    cp "target/release/${BIN_NAME}" /server
+
+FROM cgr.dev/chainguard/glibc-dynamic:${BASE_TAG}
+COPY --from=builder /server /app/server
+
+USER nonroot
+
+ENTRYPOINT ["/app/server"]

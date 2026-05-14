@@ -1,0 +1,25 @@
+# Rust devcontainer image (Microsoft devcontainers/rust base).
+#
+# Extends the official VS Code Rust devcontainer with additional tooling:
+#   - cargo-edit  — cargo add/rm/upgrade subcommands
+#   - cargo-watch — auto-recompile on file changes (cargo watch -x run)
+#   - cargo-nextest — fast parallel test runner (cargo nextest run)
+#
+# The base image ships: rustup, cargo, clippy, rustfmt, rust-analyzer.
+#
+# Build context: dockerfiles/rust/
+#   docker build -f Dockerfile.devcontainer .
+#
+# Typical usage: open in VS Code with the Dev Containers extension;
+# the .devcontainer/devcontainer.json references this file.
+ARG VARIANT=1-bookworm
+
+FROM mcr.microsoft.com/devcontainers/rust:${VARIANT}
+
+USER vscode
+
+RUN rustup component add clippy rustfmt rust-analyzer && \
+    cargo install cargo-edit --version 0.13.2 --locked && \
+    cargo install cargo-watch --version 8.5.3 --locked && \
+    cargo install cargo-nextest --locked && \
+    cargo install cargo-chef --version 0.1.77 --locked

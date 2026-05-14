@@ -1,0 +1,58 @@
+# Rust application image (cargo-chef + Google Distroless cc, multi-stage).
+#
+# Uses cargo-chef to cache the dependency-compile layer separately from
+# application source. Changing only src/ reuses the pre-built deps layer,
+# cutting rebuild time from minutes to seconds.
+#
+# cargo-chef stages:
+#   chef    — installs cargo-chef; shared base for the next two stages.
+#   planner — runs `cargo chef prepare` to extract dependency metadata.
+#   builder — cooks deps first (cacheable), then compiles the binary.
+#
+# Runtime: gcr.io/distroless/cc-debian12:nonroot includes glibc and
+# libstdc++ for dynamically-linked GNU Rust binaries. To produce a
+# fully-static binary instead, compile with --target x86_64-unknown-linux-musl
+# and switch the runtime to gcr.io/distroless/static-debian12:nonroot.
+#
+# BIN_NAME:
+#   Set --build-arg BIN_NAME=<your_binary_name> (default: app).
+#   Must match the [[bin]] name in Cargo.toml.
+#
+# Multi-arch builds:
+#   docker buildx build --platform=linux/amd64,linux/arm64 \
+#       --build-arg BIN_NAME=mybin -t myapp -f Dockerfile.rust .
+#
+# Build:
+#   docker build --build-arg BIN_NAME=mybin -t myapp -f Dockerfile.rust .
+#
+# Run (hardened):
+#   docker run --rm \
+#     --read-only \
+#     --cap-drop=ALL \
+#     --security-opt=no-new-privileges \
+#     myapp
+ARG RUST_TAG=1.82-slim
+ARG DISTROLESS_TAG=debian12
+
+FROM rust:${RUST_TAG} AS chef
+RUN cargo install cargo-chef --version 0.1.77 --locked
+WORKDIR /app
+
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
+ARG BIN_NAME=app
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+COPY . .
+RUN cargo build --release --bin "${BIN_NAME}" && \
+    cp "target/release/${BIN_NAME}" /server
+
+FROM gcr.io/distroless/cc-${DISTROLESS_TAG}:nonroot
+COPY --from=builder --chown=nonroot:nonroot /server /app/server
+
+USER nonroot
+
+ENTRYPOINT ["/app/server"]
