@@ -18,7 +18,7 @@
 [![Hadolint](https://img.shields.io/badge/Hadolint-clean-success)](https://github.com/hadolint/hadolint)
 [![Prettier](https://img.shields.io/badge/Code_Style-Prettier-F7B93E?logo=prettier&logoColor=black)](https://prettier.io/)
 
-Reference [Dockerfiles](https://docs.docker.com/engine/reference/builder/) and best-practice guides for building **secure container images** that ship to production: small, signed, scanner-friendly, [OCI](https://opencontainers.org/)-compliant. [Python](https://www.python.org/), [Go](https://go.dev/), and [JAX](https://jax.readthedocs.io/) are covered; [Node.js](https://nodejs.org/), [TypeScript](https://www.typescriptlang.org/), and [Rust](https://www.rust-lang.org/) are on the [roadmap](https://github.com/kssd/dockerfiles/issues).
+Reference [Dockerfiles](https://docs.docker.com/engine/reference/builder/) and best-practice guides for building **secure container images** that ship to production: small, signed, scanner-friendly, [OCI](https://opencontainers.org/)-compliant. [Python](https://www.python.org/), [Go](https://go.dev/), [JAX](https://jax.readthedocs.io/), [Node.js](https://nodejs.org/), and [TypeScript](https://www.typescriptlang.org/) are covered; [Rust](https://www.rust-lang.org/) is on the [roadmap](https://github.com/kssd/dockerfiles/issues).
 
 ## Why these templates
 
@@ -103,12 +103,32 @@ Secure [JAX](https://jax.readthedocs.io/) Docker images for CPU inference and GP
 
 Full documentation: [`dockerfiles/jax/README.md`](dockerfiles/jax/README.md).
 
+### Node.js — distroless and sandboxed runtimes
+
+Secure [Node.js](https://nodejs.org/) Docker images on [**Google Distroless**](https://github.com/GoogleContainerTools/distroless) by default, with [Chainguard](https://images.chainguard.dev/directory/image/node/overview) variants, an [AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-image.html) container image, and an agent sandbox for LLM-generated code.
+
+- Distroless production image → [`dockerfiles/node/Dockerfile.node`](dockerfiles/node/Dockerfile.node)
+- Chainguard production image → [`dockerfiles/node/Dockerfile.node.chainguard`](dockerfiles/node/Dockerfile.node.chainguard)
+- [AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-image.html) container image → [`dockerfiles/node/Dockerfile.lambda`](dockerfiles/node/Dockerfile.lambda)
+- Agent sandbox for untrusted LLM-generated code → [`dockerfiles/node/Dockerfile.sandbox`](dockerfiles/node/Dockerfile.sandbox)
+- VS Code devcontainer (Node.js 22 + pnpm + tsx) → [`dockerfiles/node/Dockerfile.devcontainer`](dockerfiles/node/Dockerfile.devcontainer)
+
+Full documentation: [`dockerfiles/node/README.md`](dockerfiles/node/README.md).
+
+### TypeScript — compiled to distroless
+
+Multi-stage [TypeScript](https://www.typescriptlang.org/) images: a dedicated deps stage for production `node_modules`, a build stage running `tsc`, and a [**Google Distroless**](https://github.com/GoogleContainerTools/distroless) runtime with only compiled JS and production deps — no compiler, no dev tooling, no shell.
+
+- Distroless production image → [`dockerfiles/typescript/Dockerfile.typescript`](dockerfiles/typescript/Dockerfile.typescript)
+- Chainguard production image → [`dockerfiles/typescript/Dockerfile.typescript.chainguard`](dockerfiles/typescript/Dockerfile.typescript.chainguard)
+- VS Code devcontainer (TypeScript + Node.js 22 + pnpm + tsx) → [`dockerfiles/typescript/Dockerfile.devcontainer`](dockerfiles/typescript/Dockerfile.devcontainer)
+
+Full documentation: [`dockerfiles/typescript/README.md`](dockerfiles/typescript/README.md).
+
 ### Coming soon
 
 Tracked as issues — comment or 👍 to bump priority.
 
-- [Node.js Dockerfile templates](https://github.com/kssd/dockerfiles/issues/6) _(planned)_
-- [TypeScript Dockerfile templates](https://github.com/kssd/dockerfiles/issues/9) _(planned)_
 - [Rust Dockerfile templates](https://github.com/kssd/dockerfiles/issues/8) _(planned)_
 - [Zig Dockerfile templates](https://github.com/kssd/dockerfiles/issues/11) _(planned)_
 

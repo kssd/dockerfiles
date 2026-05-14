@@ -1,0 +1,38 @@
+# TypeScript devcontainer image for VS Code Remote-Containers / Dev Containers.
+#
+# Based on the official Microsoft TypeScript + Node devcontainer base image,
+# which ships Node.js 22, npm, TypeScript, ts-node, git, curl, jq, a non-root
+# `vscode` user (UID 1000), and common dev utilities. The image is intentionally
+# fat compared to the production variants — developer ergonomics over minimal size.
+#
+# Pinned to a minor version tag (1-22-bookworm), not :latest, so builds
+# are reproducible and PR reviews can see version bumps.
+#
+# Extra tools installed here:
+#   - pnpm  — fast, disk-efficient package manager
+#   - tsx   — TypeScript/ESM executor for running scripts without a build step
+#
+# All extra tools are pinned to explicit versions.
+#
+# This image is paired with .devcontainer/devcontainer.json, which wires
+# the VS Code TypeScript extensions, workspace mount, and remoteUser.
+#
+# Build:
+#   docker build -t typescript-dev -f Dockerfile.devcontainer .
+#   (normally invoked automatically by VS Code "Reopen in Container")
+ARG DEVCONTAINER_TAG=1-22-bookworm
+
+FROM mcr.microsoft.com/devcontainers/typescript-node:${DEVCONTAINER_TAG}
+
+ARG PNPM_VERSION=9.15.4
+ARG TSX_VERSION=4.19.3
+
+USER vscode
+
+ENV PATH="/home/vscode/.local/bin:${PATH}"
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN npm install -g --no-fund \
+        "pnpm@${PNPM_VERSION}" \
+        "tsx@${TSX_VERSION}"

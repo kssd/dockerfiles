@@ -1,0 +1,49 @@
+# TypeScript application image (tsc + Google Distroless, multi-stage).
+#
+# Three-stage build:
+#   deps  — production node_modules only (npm ci --omit=dev); separate so
+#           a source change does not re-run the production install.
+#   build — full devDependencies + TypeScript compiler (tsc) emitting to
+#           /app/dist.
+#   final — gcr.io/distroless/nodejs22-debian12:nonroot containing only
+#           the compiled JS and production node_modules.
+#
+# IMPORTANT: the distroless nodejs image sets ENTRYPOINT to the Node.js
+# binary (/nodejs/bin/node). CMD must be the compiled JS path only — do NOT
+# include "node" as the first CMD element.
+#
+# Expected build context:
+#   ./package.json / package-lock.json — dependency manifest
+#   ./tsconfig.json                    — TypeScript config (outDir: ./dist)
+#   ./src/index.ts                     — default entry point
+#
+# Build:
+#   docker build --build-arg NODE_TAG=22-slim -t myapp -f Dockerfile.typescript .
+#
+# Run:
+#   docker run --rm myapp
+ARG NODE_TAG=22-slim
+ARG DISTROLESS_TAG=debian12
+
+FROM node:${NODE_TAG} AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+FROM node:${NODE_TAG} AS build
+WORKDIR /app
+COPY package*.json tsconfig.json ./
+RUN npm ci
+COPY src ./src
+RUN npx tsc --noEmit false
+
+FROM gcr.io/distroless/nodejs22-${DISTROLESS_TAG}:nonroot
+WORKDIR /app
+
+COPY --from=deps --chown=nonroot:nonroot /app/node_modules /app/node_modules
+COPY --from=build --chown=nonroot:nonroot /app/dist /app/dist
+
+USER nonroot
+
+# ENTRYPOINT is /nodejs/bin/node — CMD is the compiled script path only.
+CMD ["/app/dist/index.js"]

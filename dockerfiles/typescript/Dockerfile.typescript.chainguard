@@ -1,0 +1,37 @@
+# TypeScript application image (Chainguard variant).
+#
+# Three-stage build mirroring Dockerfile.typescript but using Chainguard
+# node images for daily CVE patches, Sigstore signatures, and SBOMs.
+#
+# Chainguard free-tier constraint: versioned tags (e.g. :22) are paywalled.
+# Free Developer Edition publishes :latest and :latest-dev only. Pin the
+# runtime image by digest for reproducibility:
+#   docker pull cgr.dev/chainguard/node:latest
+#   docker inspect --format='{{index .RepoDigests 0}}' cgr.dev/chainguard/node:latest
+#   # Then: FROM cgr.dev/chainguard/node:latest@sha256:<digest>
+#
+# Build:
+#   docker build -t myapp -f Dockerfile.typescript.chainguard .
+ARG BASE_TAG=latest
+
+FROM cgr.dev/chainguard/node:${BASE_TAG}-dev AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+FROM cgr.dev/chainguard/node:${BASE_TAG}-dev AS build
+WORKDIR /app
+COPY package*.json tsconfig.json ./
+RUN npm ci
+COPY src ./src
+RUN npx tsc --noEmit false
+
+FROM cgr.dev/chainguard/node:${BASE_TAG}
+WORKDIR /app
+
+COPY --from=deps --chown=node:node /app/node_modules /app/node_modules
+COPY --from=build --chown=node:node /app/dist /app/dist
+
+USER node
+
+CMD ["/app/dist/index.js"]

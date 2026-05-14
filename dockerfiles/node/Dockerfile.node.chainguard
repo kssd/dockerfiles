@@ -29,8 +29,7 @@ COPY . .
 FROM cgr.dev/chainguard/node:${BASE_TAG}
 WORKDIR /app
 
-COPY --from=builder --chown=node:node /app/node_modules /app/node_modules
-COPY --from=builder --chown=node:node /app/src /app/src
+COPY --from=builder --chown=node:node /app /app
 
 USER node
 
