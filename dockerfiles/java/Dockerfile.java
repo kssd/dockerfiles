@@ -55,6 +55,7 @@ COPY gradle/ ./gradle/
 RUN chmod +x gradlew && ./gradlew dependencies --no-daemon -q
 
 # -- Build: compile and package (inherits deps layer from chosen tool)
+# hadolint ignore=DL3006
 FROM ${BUILD_TOOL}-deps AS builder
 ARG BUILD_TOOL
 WORKDIR /app
