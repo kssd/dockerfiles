@@ -47,14 +47,19 @@ RUN case "${TARGETARCH}" in \
     rm /tmp/zig.tar.xz
 
 # Install ZLS (Zig Language Server)
+# Update ZLS_SHA256 values together with ZLS_VERSION.
+# Fetch from: https://github.com/zigtools/zls/releases
 RUN case "${TARGETARCH}" in \
         amd64) \
-            ZLS_URL="https://github.com/zigtools/zls/releases/download/${ZLS_VERSION}/zls-x86_64-linux.tar.xz" ;; \
+            ZLS_URL="https://github.com/zigtools/zls/releases/download/${ZLS_VERSION}/zls-x86_64-linux.tar.xz" ; \
+            ZLS_SHA256="ded6d562a0b86ee878b1ddf70ffab2797ce3cdca3b02d6077548f9d56dff96b6" ;; \
         arm64) \
-            ZLS_URL="https://github.com/zigtools/zls/releases/download/${ZLS_VERSION}/zls-aarch64-linux.tar.xz" ;; \
+            ZLS_URL="https://github.com/zigtools/zls/releases/download/${ZLS_VERSION}/zls-aarch64-linux.tar.xz" ; \
+            ZLS_SHA256="430cd293d201eb70ae2519dbc96c854bf8791b8df7fc9392e8d2dc9680a2bed7" ;; \
         *) echo "Unsupported TARGETARCH: ${TARGETARCH}" && exit 1 ;; \
     esac && \
     curl -fsSL "${ZLS_URL}" -o /tmp/zls.tar.xz && \
+    echo "${ZLS_SHA256}  /tmp/zls.tar.xz" | sha256sum -c - && \
     tar -xJf /tmp/zls.tar.xz -C /tmp && \
     mv /tmp/zls /usr/local/bin/zls && \
     chmod +x /usr/local/bin/zls && \
