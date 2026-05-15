@@ -1,0 +1,30 @@
+# Zig build cache and output -- can be large; always exclude
+zig-cache/
+.zig-cache/
+zig-out/
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Devcontainer
+.devcontainer/
+
+# Credentials and secrets
+.env
+*.pem
+*.key
+*.cert
+
+# CI
+.github/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+LICENSE
